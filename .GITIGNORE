@@ -1,0 +1,44 @@
+# === Archivos Sensibles y Configuración Local ===
+# No subir credenciales ni configuraciones específicas de tu PC
+.env
+*.key
+*.pem
+*.p12
+
+# === Datos de Usuario y Resultados ===
+# La carpeta de backups es la principal sospechosa del error de tamaño
+backups_macs/
+# Ignoramos archivos de datos que se llenan con el uso
+macs.txt
+macs
+# Archivos basura o temporales detectados en tu carpeta[cite: 1]
+.txt
+
+# === Logs y Temporales ===
+logs/
+*.log
+*.backup
+*.tmp
+
+# === Entornos de Python (Automation) ===
+# No subir las librerías instaladas, solo el script[cite: 1]
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+ENV/
+.venv/
+
+# === Archivos de Sistema ===
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# === Binarios Pesados ===
+# Los firmwares de routers suelen ser pesados y bloquean la subida
+Firmware_*.bin
+*.exe
+*.iso

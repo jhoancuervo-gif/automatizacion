@@ -1,0 +1,17 @@
+﻿{
+    "PhantomF2Reintegro_Base":  "192.168.10.",
+    "OrbeReintegro_Inicio":  200,
+    "OrbeReintegro_Base":  "192.168.10.",
+    "PhantomF2Reintegro_Fin":  215,
+    "PhantomF2Nuevo_IP":  "192.168.10.1",
+    "OrbeNuevo_IP":  "192.168.10.1",
+    "PhantomNuevo_IP":  "192.168.1.1",
+    "TVBox_Inicio":  200,
+    "PhantomReintegro_Base":  "192.168.10.",
+    "OrbeReintegro_Fin":  215,
+    "PhantomReintegro_Fin":  215,
+    "PhantomF2Reintegro_Inicio":  200,
+    "TVBox_Base":  "192.168.10.",
+    "TVBox_Fin":  220,
+    "PhantomReintegro_Inicio":  212
+}
