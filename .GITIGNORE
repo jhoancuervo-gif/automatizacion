@@ -38,7 +38,6 @@ Thumbs.db
 desktop.ini
 
 # === Binarios Pesados ===
-# Los firmwares de routers suelen ser pesados y bloquean la subida
-Firmware_*.bin
+# Firmware_*.bin  <-- Borra esta línea o ponle un # al principio
 *.exe
 *.iso
