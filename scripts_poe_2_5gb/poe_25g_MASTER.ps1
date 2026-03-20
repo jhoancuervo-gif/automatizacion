@@ -31,7 +31,7 @@ if (-not (Test-Path $fwFile) -or -not (Test-Path $configFile)) {
 }
 
 $ip = "192.168.18.1"
-$auth = "admin:admin." 
+$auth = "admin:admin" 
 $ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)"
 
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
