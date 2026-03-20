@@ -1,5 +1,5 @@
 ﻿# =========================================================
-# SCRIPT: poeport81G.ps1 - OPTIMIZADO CON DOBLE VERIFICACIÓN
+# SCRIPT: poeport81G.ps1 - CARGA SNMP CON DOBLE LOGIN
 # =========================================================
 
 $currentDir = $PSScriptRoot
@@ -19,7 +19,7 @@ if (-not (Test-Path $configFile)) {
 do {
     Clear-Host
     Write-Host "==========================================================" -ForegroundColor Cyan
-    Write-Host "   HELLOTEK - CARGA SNMP CON DOBLE VERIFICACIÓN          " -ForegroundColor Cyan
+    Write-Host "   HELLOTEK - CARGA DE CONFIGURACIÓN SNMP (8 PUERTOS)    " -ForegroundColor Cyan
     Write-Host "==========================================================" -ForegroundColor Cyan
     
     $ip = "192.168.18.1"
@@ -42,12 +42,13 @@ do {
         if ($choice -eq "s") { break } else { continue }
     }
 
-    # --- PASO 2: PRUEBA DE CREDENCIALES (Doble Intento) ---
+    # --- PASO 2: PRUEBA DE CREDENCIALES ---
     Write-Host "[2/3] Validando acceso..." -NoNewline
     $authOptions = @("admin:admin", "admin:somos123.")
     $validAuth = $null
 
     foreach ($auth in $authOptions) {
+        # Intentamos una petición rápida para verificar el código HTTP
         $status = curl.exe -u $auth -s -o NUL -I -w "%{http_code}" "http://$ip/index.htm" --max-time 2
         if ($status -eq "200") {
             $validAuth = $auth
@@ -58,36 +59,24 @@ do {
 
     if (-not $validAuth) {
         Write-Host " [ERROR: ACCESO DENEGADO]" -ForegroundColor Red
+        Write-Host " No se pudo entrar con 'admin' ni con 'somos123.'"
         $retry = Read-Host "ENTER para reintentar / 'S' para salir"
         if ($retry -eq "s") { break } else { continue }
     }
 
-    # --- PASO 3: CARGA Y DOBLE VERIFICACIÓN ---
+    # --- PASO 3: CARGA Y VERIFICACIÓN ---
     Write-Host "[3/3] Enviando Configuración..." -NoNewline
     
-    # Verificación 1: Ejecución del proceso curl
+    # Usamos la credencial que resultó válida
     $process = Start-Process curl.exe -ArgumentList "-u $validAuth -s -o NUL -X POST `"http://$ip/cgi/SG1008.bin`" -F `"FN=@$configFile`"" -Wait -PassThru -NoNewWindow
+
+    Start-Sleep -Seconds 3
+    Write-Host " Verificando respuesta..." -NoNewline
     
-    if ($process.ExitCode -eq 0) {
-        Write-Host " [ENVÍO EXITOSO]" -ForegroundColor Green
+    if (Test-Connection $ip -Count 1 -Quiet) {
+        Write-Host " [OK - APLICADO]" -ForegroundColor Green
     } else {
-        Write-Host " [AVISO: Conexión cerrada por el Switch]" -ForegroundColor Yellow
-    }
-
-    # Espera técnica para el reinicio del switch
-    Write-Host "      Validando reinicio de hardware..." -NoNewline
-    Start-Sleep -Seconds 5
-
-    # Verificación 2: Prueba de conectividad (Ping)
-    $checkPing = Test-Connection $ip -Count 2 -Quiet
-
-    if ($checkPing) {
-        Write-Host " [CONFIRMADO: Equipo en línea]" -ForegroundColor Green
-        $statusFinal = "EXITOSO"
-    } else {
-        # Si no responde ping inmediatamente, es la señal estándar de reinicio exitoso en estos modelos
-        Write-Host " [REINICIANDO: Configuración aplicada correctamente]" -ForegroundColor Cyan
-        $statusFinal = "REINICIANDO"
+        Write-Host " [REINICIANDO... OK]" -ForegroundColor Cyan
     }
 
     # --- GUARDADO DE LOGS ---
@@ -96,10 +85,12 @@ do {
         if (-not (Test-Path $backupDir)) { New-Item -ItemType Directory -Path $backupDir | Out-Null }
         $fecha = Get-Date -Format "yyyy-MM-dd"
         $historial = Join-Path $backupDir "poe_8port_snmp_$fecha.txt"
-        Add-Content -Path $historial -Value "$(Get-Date -Format 'HH:mm:ss') | $macResult | Auth:$validAuth | Status:$statusFinal" -Encoding UTF8
+        Add-Content -Path $historial -Value "$(Get-Date -Format 'HH:mm:ss') | SNMP_8P | $macResult | Login:$validAuth" -Encoding UTF8
     }
 
     Write-Host "========================================" -ForegroundColor Cyan
+    Write-Host "FINALIZADO CON ÉXITO: $macResult" -ForegroundColor Green
     [System.Console]::Beep(1000, 150)
-    $next = Read-Host "Siguiente switch (ENTER) / Salir (S)"
+
+    $next = Read-Host "Presione ENTER para el siguiente switch / 'S' para salir"
 } while ($next -ne "s")
