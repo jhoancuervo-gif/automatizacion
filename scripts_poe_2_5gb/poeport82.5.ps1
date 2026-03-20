@@ -1,41 +1,31 @@
 ﻿# =========================================================
-# SCRIPT: poe_25g_MASTER.ps1 - SOLO CONFIGURACIÓN (2.5G SNMP)
+# SCRIPT: poeport81G.ps1 - CARGA SNMP CON DOBLE LOGIN
 # =========================================================
 
-# --- RUTAS AUTOMÁTICAS ---
-if ($PSScriptRoot) { $baseDir = $PSScriptRoot } else { $baseDir = Get-Location }
+$currentDir = $PSScriptRoot
+$rootDir    = Split-Path -Parent $currentDir
+$backupDir  = Join-Path $rootDir "backups_macs"
 
-# Archivo solicitado para esta versión
-$configFile = "$baseDir\SW_CFG_2.5G_client_port8_snmp.bin"
-$macFile    = "$baseDir\mac.txt"
-
-# --- VERIFICACIÓN DE SEGURIDAD ---
-if (-not (Test-Path $macFile)) { 
-    New-Item -Path $macFile -ItemType File -Force | Out-Null
-}
-
-if (-not (Test-Path $configFile)) {
-    Clear-Host
-    Write-Host " [ERROR] NO SE ENCUENTRA: $configFile" -ForegroundColor Red
-    Read-Host "Presione Enter para salir"
-    Break
-}
-
-# Credenciales actualizadas
-$ip = "192.168.18.1"
-$auth = "admin:somos123." 
-$ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)"
+$configFile = Join-Path $currentDir "port8_snmp.bin"
+$macFile    = Join-Path $currentDir "mac.txt"
 
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+
+if (-not (Test-Path $configFile)) { 
+    Write-Host " [!] ERROR: No se encuentra '$configFile'." -ForegroundColor Red
+    pause; exit 
+}
 
 do {
     Clear-Host
     Write-Host "==========================================================" -ForegroundColor Cyan
-    Write-Host "   HELLOTEK 2.5G - CARGA CONFIG SNMP (CLIENTE)            " -ForegroundColor Cyan
+    Write-Host "   HELLOTEK - CARGA DE CONFIGURACIÓN SNMP (8 PUERTOS)    " -ForegroundColor Cyan
     Write-Host "==========================================================" -ForegroundColor Cyan
     
-    # [1] CAPTURA MAC
-    Write-Host "[1/2] Identificando equipo..." -NoNewline
+    $ip = "192.168.18.1"
+
+    # --- PASO 1: CAPTURA DE MAC ---
+    Write-Host "[1/3] Identificando equipo..." -ForegroundColor Yellow
     arp -d $ip 2>$null
     Test-Connection $ip -Count 1 -Quiet | Out-Null
     
@@ -43,23 +33,43 @@ do {
     $arpTable = arp -a $ip | Out-String
     if ($arpTable -match "([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})") {
         $macResult = $matches[0].ToUpper().Replace("-",":")
-        Write-Host " [MAC: $macResult]" -ForegroundColor Green
-    } else {
-        Write-Host " [NO DETECTADO]" -ForegroundColor Red
-        $retry = Read-Host "ENTER reintentar / 'S' salir"
+        Write-Host " -> MAC Detectada: $macResult" -ForegroundColor Green
+    }
+
+    if ([string]::IsNullOrWhiteSpace($macResult)) {
+        Write-Host " [!] ERROR: No se detectó MAC." -ForegroundColor Red
+        $choice = Read-Host "ENTER para reintentar / 'S' para salir"
+        if ($choice -eq "s") { break } else { continue }
+    }
+
+    # --- PASO 2: PRUEBA DE CREDENCIALES ---
+    Write-Host "[2/3] Validando acceso..." -NoNewline
+    $authOptions = @("admin:admin", "admin:somos123.")
+    $validAuth = $null
+
+    foreach ($auth in $authOptions) {
+        # Intentamos una petición rápida para verificar el código HTTP
+        $status = curl.exe -u $auth -s -o NUL -I -w "%{http_code}" "http://$ip/index.htm" --max-time 2
+        if ($status -eq "200") {
+            $validAuth = $auth
+            Write-Host " [OK: $auth]" -ForegroundColor Green
+            break
+        }
+    }
+
+    if (-not $validAuth) {
+        Write-Host " [ERROR: ACCESO DENEGADO]" -ForegroundColor Red
+        Write-Host " No se pudo entrar con 'admin' ni con 'somos123.'"
+        $retry = Read-Host "ENTER para reintentar / 'S' para salir"
         if ($retry -eq "s") { break } else { continue }
     }
 
-    # [2] CARGA DE CONFIGURACIÓN (Sin flasheo previo)
-    Write-Host "[2/2] Subiendo Configuración..." -NoNewline
+    # --- PASO 3: CARGA Y VERIFICACIÓN ---
+    Write-Host "[3/3] Enviando Configuración..." -NoNewline
     
-    # Nota: Para el 2.5G usamos el endpoint /cgi/SW_CFG.bin con el nuevo archivo
-    curl.exe -u $auth -s -o NUL -X POST "http://$ip/cgi/SW_CFG.bin" `
-             -H "Referer: http://$ip/saveconfig.htm" `
-             -H "User-Agent: $ua" `
-             -F "filename=@$configFile"
+    # Usamos la credencial que resultó válida
+    $process = Start-Process curl.exe -ArgumentList "-u $validAuth -s -o NUL -X POST `"http://$ip/cgi/SG1008.bin`" -F `"FN=@$configFile`"" -Wait -PassThru -NoNewWindow
 
-    # Verificación de reinicio (para evitar el falso error de curl)
     Start-Sleep -Seconds 3
     Write-Host " Verificando respuesta..." -NoNewline
     
@@ -69,15 +79,18 @@ do {
         Write-Host " [REINICIANDO... OK]" -ForegroundColor Cyan
     }
 
-    # Registro de MAC
+    # --- GUARDADO DE LOGS ---
     if ($macResult) {
-        "$macResult" | Add-Content -Path $macFile
-        Write-Host "      [REGISTRADO EN MAC.TXT]" -ForegroundColor Gray
-        [System.Console]::Beep(1000, 150)
+        $macResult | Add-Content -Path $macFile
+        if (-not (Test-Path $backupDir)) { New-Item -ItemType Directory -Path $backupDir | Out-Null }
+        $fecha = Get-Date -Format "yyyy-MM-dd"
+        $historial = Join-Path $backupDir "poe_8port_snmp_$fecha.txt"
+        Add-Content -Path $historial -Value "$(Get-Date -Format 'HH:mm:ss') | SNMP_8P | $macResult | Login:$validAuth" -Encoding UTF8
     }
 
     Write-Host "========================================" -ForegroundColor Cyan
-    $n = Read-Host "ENTER Siguiente Switch / 'S' Salir"
-    if ($n -eq "s") { break }
+    Write-Host "FINALIZADO CON ÉXITO: $macResult" -ForegroundColor Green
+    [System.Console]::Beep(1000, 150)
 
-} while ($true)
+    $next = Read-Host "Presione ENTER para el siguiente switch / 'S' para salir"
+} while ($next -ne "s")
