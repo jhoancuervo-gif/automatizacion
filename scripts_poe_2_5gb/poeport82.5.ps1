@@ -1,6 +1,5 @@
 ﻿# =========================================================
 # SCRIPT: poe_25g_NATIVO_PS.ps1
-# FIX: MOTOR NATIVO PARA EVITAR BLOQUEO DE ANTIVIRUS (000)
 # =========================================================
 
 $baseDir = if ($PSScriptRoot) { $PSScriptRoot } else { Get-Location }
@@ -20,7 +19,7 @@ if (-not (Test-Path $configFile)) {
 do {
     Clear-Host
     Write-Host "==========================================================" -ForegroundColor Cyan
-    Write-Host "   HELLOTEK 2.5G - CARGA NATIVA (ANTI-BLOCK)              " -ForegroundColor Cyan
+    Write-Host "   HELLOTEK 2.5G -            " -ForegroundColor purple
     Write-Host "==========================================================" -ForegroundColor Cyan
     
     # [1] IDENTIFICACION MAC
