@@ -1,37 +1,21 @@
 ﻿# =========================================================
-# SCRIPT: poe_25g_MASTER.ps1 - SOLO CONFIGURACIÓN (2.5G SNMP)
+# SCRIPT: poe_25g_MASTER_ROBUSTO.ps1
+# FIX: CONTROL DE TIMEOUTS Y DOBLE AUTH
 # =========================================================
 
-# --- RUTAS AUTOMÁTICAS ---
 if ($PSScriptRoot) { $baseDir = $PSScriptRoot } else { $baseDir = Get-Location }
 
-# Archivo solicitado para esta versión
 $configFile = "$baseDir\port8_snmp.bin"
 $macFile    = "$baseDir\mac.txt"
-
-# --- VERIFICACIÓN DE SEGURIDAD ---
-if (-not (Test-Path $macFile)) { 
-    New-Item -Path $macFile -ItemType File -Force | Out-Null
-}
-
-if (-not (Test-Path $configFile)) {
-    Clear-Host
-    Write-Host " [ERROR] NO SE ENCUENTRA: $configFile" -ForegroundColor Red
-    Read-Host "Presione Enter para salir"
-    Break
-}
-
-# Credenciales actualizadas
 $ip = "192.168.18.1"
-$auth = "admin:somos123." 
-$ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)"
+$ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
 
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
 do {
     Clear-Host
     Write-Host "==========================================================" -ForegroundColor Cyan
-    Write-Host "   HELLOTEK 2.5G - CARGA CONFIG SNMP (CLIENTE)            " -ForegroundColor Cyan
+    Write-Host "   HELLOTEK 2.5G - CARGA CONFIG SNMP (ESTABLE)            " -ForegroundColor Cyan
     Write-Host "==========================================================" -ForegroundColor Cyan
     
     # [1] CAPTURA MAC
@@ -39,45 +23,55 @@ do {
     arp -d $ip 2>$null
     Test-Connection $ip -Count 1 -Quiet | Out-Null
     
-    $macResult = ""
     $arpTable = arp -a $ip | Out-String
     if ($arpTable -match "([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})") {
         $macResult = $matches[0].ToUpper().Replace("-",":")
         Write-Host " [MAC: $macResult]" -ForegroundColor Green
     } else {
         Write-Host " [NO DETECTADO]" -ForegroundColor Red
-        $retry = Read-Host "ENTER reintentar / 'S' salir"
-        if ($retry -eq "s") { break } else { continue }
+        $retry = Read-Host "ENTER reintentar / 'S' salir"; if ($retry -eq "s") { break } else { continue }
     }
 
-    # [2] CARGA DE CONFIGURACIÓN (Sin flasheo previo)
-    Write-Host "[2/2] Subiendo Configuración..." -NoNewline
+    # [2] VALIDACIÓN DE ACCESO (Para evitar que se cuelgue por clave)
+    Write-Host "[2/3] Validando credenciales..." -NoNewline
+    $authList = @("admin:somos123.", "admin:admin")
+    $validAuth = $null
+
+    foreach ($cred in $authList) {
+        # --connect-timeout evita que el script se quede "pensando" si no hay respuesta
+        $test = curl.exe -u "$cred" -s -o NUL -w "%{http_code}" "http://$ip/index.htm" --connect-timeout 5 --max-time 8
+        if ($test -eq "200") {
+            $validAuth = $cred
+            Write-Host " [OK: $cred]" -ForegroundColor Green
+            break
+        }
+    }
+
+    if (-not $validAuth) {
+        Write-Host " [ERROR: No hay acceso al switch]" -ForegroundColor Red
+        pause; continue
+    }
+
+    # [3] CARGA DE CONFIGURACIÓN
+    Write-Host "[3/3] Subiendo Configuración..." -NoNewline
     
-    # Nota: Para el 2.5G usamos el endpoint /cgi/SW_CFG.bin con el nuevo archivo
-    curl.exe -u $auth -s -o NUL -X POST "http://$ip/cgi/SW_CFG.bin" `
+    # Añadimos --max-time 40 para que, si el switch no responde, el script recupere el control
+    $res = curl.exe -u "$validAuth" -s -o NUL -w "%{http_code}" `
+             --connect-timeout 10 --max-time 40 `
              -H "Referer: http://$ip/saveconfig.htm" `
-             -H "User-Agent: $ua" `
-             -F "filename=@$configFile"
+             -X POST "http://$ip/cgi/SW_CFG.bin" -F "filename=@$configFile"
 
-    # Verificación de reinicio (para evitar el falso error de curl)
-    Start-Sleep -Seconds 3
-    Write-Host " Verificando respuesta..." -NoNewline
-    
-    if (Test-Connection $ip -Count 1 -Quiet) {
+    if ($res -eq "200" -or $res -eq "302") {
         Write-Host " [OK - APLICADO]" -ForegroundColor Green
-    } else {
-        Write-Host " [REINICIANDO... OK]" -ForegroundColor Cyan
-    }
-
-    # Registro de MAC
-    if ($macResult) {
-        "$macResult" | Add-Content -Path $macFile
-        Write-Host "      [REGISTRADO EN MAC.TXT]" -ForegroundColor Gray
+        Write-Host "      Esperando reinicio (15s)..." -NoNewline
+        for($i=0; $i -lt 15; $i++) { Write-Host "." -NoNewline; Start-Sleep -Seconds 1 }
+        
+        if ($macResult) { "$macResult" | Add-Content -Path $macFile }
         [System.Console]::Beep(1000, 150)
+    } else {
+        Write-Host " [FALLO: Código HTTP $res]" -ForegroundColor Red
     }
 
-    Write-Host "========================================" -ForegroundColor Cyan
+    Write-Host "`n========================================" -ForegroundColor Cyan
     $n = Read-Host "ENTER Siguiente Switch / 'S' Salir"
-    if ($n -eq "s") { break }
-
-} while ($true)
+} while ($n -ne "s")
