@@ -4,7 +4,7 @@
 if ($PSScriptRoot) { $baseDir = $PSScriptRoot } else { $baseDir = Get-Location }
 
 $fwFile     = "$baseDir\upg_appimage2.bin"
-$configFile = "$baseDir\SW_CFG_2.5G_client_port8_snmp.bin"
+$configFile = "$baseDir\port8_snmp.bin"
 $macFile    = "$baseDir\mac.txt"
 $ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)"
 
