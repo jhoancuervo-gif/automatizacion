@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import requests
 from bs4 import BeautifulSoup
+from urllib.parse import urljoin
 from config import PortalConfig, Config
 
 def login_session():
@@ -11,7 +12,6 @@ def login_session():
         res = session.get(PortalConfig.LOGIN_URL)
         soup = BeautifulSoup(res.text, 'html.parser')
 
-        # Validación de seguridad para el login
         csrf_tag = soup.find('input', {'name': 'csrfmiddlewaretoken'})
         if not csrf_tag:
             return None
@@ -33,20 +33,17 @@ def main():
     print(f"   DESACTIVACIÓN PORTAL (RAÍZ: macs.txt)")
     print(f"==========================================")
 
-    # 1. Verificar si existe el archivo de MACs
     if not Config.MAC_FILE.exists():
         print(f"❌ No se encontró macs.txt en la raíz.")
         return
 
-    # 2. Leer y limpiar las MACs del archivo
     with open(Config.MAC_FILE, 'r', encoding='utf-8') as f:
         macs = [line.strip().split(' ')[0].upper() for line in f if line.strip()]
 
     if not macs:
-        print("📭 Nada que desactivar (archivo vacío).")
+        print("📭 Nada que procesar (archivo vacío).")
         return
 
-    # 3. Iniciar sesión
     session = login_session()
     if not session:
         print("❌ Error de acceso al portal (Verifique credenciales o conexión).")
@@ -55,40 +52,55 @@ def main():
     print(f"🔐 Sesión iniciada. Procesando {len(macs)} equipos...\n")
 
     for mac in macs:
-        # Buscamos el equipo en el portal
+        # 1. Buscar el equipo
         res = session.get(f"{PortalConfig.SEARCH_URL}{mac}")
-        deactivate_url = None
-
-        # Caso A: El portal nos redirige directo al objeto (vista de cambio)
-        if '/change/' in res.url:
-            deactivate_url = res.url.replace('/change/', '/deactivate/')
-
-        # Caso B: El portal nos muestra una lista de resultados
-        else:
-            soup = BeautifulSoup(res.text, 'html.parser')
+        soup = BeautifulSoup(res.text, 'html.parser')
+        
+        change_url = res.url if '/change/' in res.url else None
+        if not change_url:
             link = soup.select_one('#result_list tbody tr th a')
             if link:
-                href = link.get('href')
-                deactivate_url = f"{PortalConfig.PORTAL_URL}{href.replace('change/', 'deactivate/')}"
+                change_url = urljoin(res.url, link.get('href'))
+        
+        if not change_url:
+            print(f" > {mac} -> ⚠️ NO ENCONTRADA")
+            continue
 
-        # --- BLOQUE DE DESACTIVACIÓN ---
-        if deactivate_url:
-            c_res = session.get(deactivate_url)
-            c_soup = BeautifulSoup(c_res.text, 'html.parser')
-
-            # Buscamos el token de confirmación de forma SEGURA
-            csrf_tag = c_soup.find('input', {'name': 'csrfmiddlewaretoken'})
-
-            if csrf_tag:
-                csrf = csrf_tag['value']
-                # Enviamos la confirmación de desactivación
-                session.post(deactivate_url, data={'post': 'yes', 'csrfmiddlewaretoken': csrf},
-                             headers={'Referer': deactivate_url})
+        # 2. Entrar a la página de edición
+        res_edit = session.get(change_url)
+        soup_edit = BeautifulSoup(res_edit.text, 'html.parser')
+        
+        # BUSQUEDA: Buscamos el input de tipo submit con valor 'Deactivate' y clase 'deletelink'
+        deactivate_input = soup_edit.find('input', {'value': 'Deactivate', 'class': 'deletelink'})
+        
+        if deactivate_input:
+            # Identificamos el ID del formulario al que pertenece el botón
+            form_id = deactivate_input.get('form')
+            deactivate_form = soup_edit.find('form', {'id': form_id})
+            
+            if deactivate_form:
+                # Obtenemos la URL de acción del formulario
+                action_url = urljoin(change_url, deactivate_form.get('action', 'deactivate/'))
+                
+                # Capturamos el token CSRF necesario para el POST
+                csrf_token = deactivate_form.find('input', {'name': 'csrfmiddlewaretoken'})['value']
+                
+                # 3. Enviar la desactivación (Simulando el clic en el botón)
+                post_data = {
+                    'csrfmiddlewaretoken': csrf_token,
+                    'post': 'yes'
+                }
+                
+                session.post(action_url, data=post_data, headers={'Referer': change_url})
                 print(f" > {mac} -> ⚪ DESACTIVADA")
             else:
-                print(f" > {mac} -> ❌ ERROR: No se pudo cargar el formulario de desactivación.")
+                # Ruta de respaldo si el formulario no tiene ID explícito
+                fallback_url = change_url.replace('/change/', '/deactivate/')
+                csrf_token = soup_edit.find('input', {'name': 'csrfmiddlewaretoken'})['value']
+                session.post(fallback_url, data={'post': 'yes', 'csrfmiddlewaretoken': csrf_token}, headers={'Referer': change_url})
+                print(f" > {mac} -> ⚪ DESACTIVADA (Ruta alternativa)")
         else:
-            print(f" > {mac} -> ⚠️ NO ENCONTRADA")
+            print(f" > {mac} -> ❌ ERROR: No se encontró el botón 'Deactivate' en la página.")
 
     print("\n==========================================")
     print("✅ PROCESO DE DESACTIVACIÓN FINALIZADO")
@@ -97,8 +109,6 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except KeyboardInterrupt:
-        print("\n⚠️ Proceso cancelado por el usuario.")
     except Exception as e:
         print(f"\n❌ Ocurrió un error inesperado: {e}")
     finally:
