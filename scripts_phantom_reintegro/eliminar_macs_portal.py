@@ -11,6 +11,7 @@ def login_session():
         res = session.get(PortalConfig.LOGIN_URL)
         soup = BeautifulSoup(res.text, 'html.parser')
 
+        # Validación de seguridad para el login
         csrf_tag = soup.find('input', {'name': 'csrfmiddlewaretoken'})
         if not csrf_tag:
             return None
@@ -32,17 +33,20 @@ def main():
     print(f"   DESACTIVACIÓN PORTAL (RAÍZ: macs.txt)")
     print(f"==========================================")
 
+    # 1. Verificar si existe el archivo de MACs
     if not Config.MAC_FILE.exists():
         print(f"❌ No se encontró macs.txt en la raíz.")
         return
 
+    # 2. Leer y limpiar las MACs del archivo
     with open(Config.MAC_FILE, 'r', encoding='utf-8') as f:
         macs = [line.strip().split(' ')[0].upper() for line in f if line.strip()]
 
     if not macs:
-        print("📭 Nada que procesar (archivo vacío).")
+        print("📭 Nada que desactivar (archivo vacío).")
         return
 
+    # 3. Iniciar sesión
     session = login_session()
     if not session:
         print("❌ Error de acceso al portal (Verifique credenciales o conexión).")
@@ -51,33 +55,35 @@ def main():
     print(f"🔐 Sesión iniciada. Procesando {len(macs)} equipos...\n")
 
     for mac in macs:
+        # Buscamos el equipo en el portal
         res = session.get(f"{PortalConfig.SEARCH_URL}{mac}")
         deactivate_url = None
 
-        # CORRECCIÓN: Ahora buscamos el endpoint 'deactivate' en lugar de 'delete'
+        # Caso A: El portal nos redirige directo al objeto (vista de cambio)
         if '/change/' in res.url:
-            deactivate_url = res.url.replace('/change/', '/deactivate/')[cite: 4]
+            deactivate_url = res.url.replace('/change/', '/deactivate/')
 
+        # Caso B: El portal nos muestra una lista de resultados
         else:
             soup = BeautifulSoup(res.text, 'html.parser')
             link = soup.select_one('#result_list tbody tr th a')
             if link:
                 href = link.get('href')
-                # Cambiamos la sustitución de la URL para apuntar a desactivación
-                deactivate_url = f"{PortalConfig.PORTAL_URL}{href.replace('change/', 'deactivate/')}"[cite: 4]
+                deactivate_url = f"{PortalConfig.PORTAL_URL}{href.replace('change/', 'deactivate/')}"
 
-        # --- BLOQUE DE DESACTIVACIÓN ACTUALIZADO ---
+        # --- BLOQUE DE DESACTIVACIÓN ---
         if deactivate_url:
             c_res = session.get(deactivate_url)
             c_soup = BeautifulSoup(c_res.text, 'html.parser')
 
+            # Buscamos el token de confirmación de forma SEGURA
             csrf_tag = c_soup.find('input', {'name': 'csrfmiddlewaretoken'})
 
             if csrf_tag:
                 csrf = csrf_tag['value']
-                # Confirmamos la desactivación enviando el POST al nuevo endpoint
+                # Enviamos la confirmación de desactivación
                 session.post(deactivate_url, data={'post': 'yes', 'csrfmiddlewaretoken': csrf},
-                             headers={'Referer': deactivate_url})[cite: 4]
+                             headers={'Referer': deactivate_url})
                 print(f" > {mac} -> ⚪ DESACTIVADA")
             else:
                 print(f" > {mac} -> ❌ ERROR: No se pudo cargar el formulario de desactivación.")
