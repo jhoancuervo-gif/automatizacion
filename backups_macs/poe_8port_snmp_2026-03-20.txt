@@ -1,0 +1,6 @@
+﻿14:32:29 | SNMP_8P | 04:8F:00:A0:1E:C7 | Login:admin:somos123.
+14:34:14 | SNMP_8P | 04:8F:00:A0:1E:C7 | Login:admin:somos123.
+14:36:40 | SNMP_8P | 04:8F:00:A0:1E:C7 | Login:admin:somos123.
+14:37:50 | SNMP_8P | 04:8F:00:A0:1E:C7 | Login:admin:somos123.
+14:38:45 | SNMP_8P | 04:8F:00:A0:1E:C7 | Login:admin:somos123.
+14:39:03 | SNMP_8P | 04:8F:00:A0:1E:C7 | Login:admin:somos123.
