@@ -1,0 +1,36 @@
+/interface bridge
+add name=bridge1
+/interface wireless security-profiles
+set [ find default=yes ] supplicant-identity=MikroTik
+/ip hotspot profile
+set [ find default=yes ] html-directory=hotspot
+/ip pool
+add name=dhcp_pool24 ranges=192.168.10.200-192.168.10.214
+/ip dhcp-server
+add address-pool=dhcp_pool24 always-broadcast=yes interface=bridge1 \
+    lease-time=30s name=dhcp1
+/port
+set 0 name=serial0
+/interface bridge port
+add bridge=bridge1 interface=ether1
+add bridge=bridge1 interface=ether2
+add bridge=bridge1 interface=ether3
+add bridge=bridge1 interface=ether4
+add bridge=bridge1 interface=ether5
+add bridge=bridge1 interface=ether6
+add bridge=bridge1 interface=ether7
+add bridge=bridge1 interface=ether8
+add bridge=bridge1 interface=ether9
+add bridge=bridge1 interface=ether10
+
+/ip address
+add address=192.168.10.1/24 comment="Gateway DHCP" interface=bridge1 network=\
+    192.168.10.0
+/ip dhcp-server network
+add address=192.168.10.0/24 dns-server=8.8.8.8,1.1.1.1 gateway=192.168.10.1
+/ip firewall nat
+# in/out-interface matcher not possible when interface (ether1) is slave - use ma
+ ter instead (bridge1)
+add action=masquerade chain=srcnat out-interface=ether1
+/system identity
+set name=Preconfiguración

@@ -1,5 +1,5 @@
 # =====================================================================
-# MENU PRINCIPAL INTEGRADO - ESTACIÓN DE TRABAJO CUERVO
+# MENU PRINCIPAL INTEGRADO
 # =====================================================================
 $ErrorActionPreference = "SilentlyContinue"
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
@@ -10,7 +10,7 @@ $EnvPath = Join-Path $RootPath ".env"
 function Mostrar-Menu {
     Clear-Host
     Write-Host "==========================================================" -ForegroundColor Yellow
-    Write-Host "      SISTEMA DE AUTOMATIZACIÓN - ESTACIÓN DE TRABAJO     " -ForegroundColor Cyan
+    Write-Host "      SISTEMA DE AUTOMATIZACION - ESTACION DE TRABAJO     " -ForegroundColor Cyan
     Write-Host "==========================================================" -ForegroundColor Yellow
     Write-Host " 1. SWITCH POE 1.0 Gb"
     Write-Host " 2. SWITCH POE 2.5 Gb"
@@ -22,11 +22,13 @@ function Mostrar-Menu {
     Write-Host " 6. ORBES NUEVAS"
     Write-Host " 7. ORBES REINTEGRO"
     Write-Host "==========================================================" -ForegroundColor Yellow
+    Write-Host " 8. TV BOX"
+     Write-Host "==========================================================" -ForegroundColor Yellow
     Write-Host " 10. INSTALAR DEPENDENCIAS (Configurar nueva PC)" -ForegroundColor Yellow
     Write-Host " 11. CAMBIAR RANGO DE IPs"
     Write-Host " 0. SALIR"
     Write-Host "==========================================================" -ForegroundColor Yellow
-    Write-Host "Seleccione una opción: " -NoNewline
+    Write-Host "Seleccione una opcion: " -NoNewline
 }
 
 do {
@@ -82,15 +84,23 @@ do {
                 Set-Location -Path $RootPath
             } else { Write-Host "`n[-] ERROR: No existe carpeta 'scripts_orbe_reintegro'" -ForegroundColor Red; Pause }
         }
+        "8" {
+            $Path = Join-Path $RootPath "configurartvbox_sinapp"
+            if (Test-Path $Path) {
+                Set-Location -Path $Path
+                cmd.exe /c configurar_sinapp.bat
+                Set-Location -Path $RootPath
+            } else { Write-Host "`n[-] ERROR: No existe carpeta 'configurartvbox_sinapp'" -ForegroundColor Red; Pause }
+        }
         "10" {
             $PathDeps = Join-Path $RootPath "instalar_dependencias.ps1"
             if (Test-Path $PathDeps) {
                 Write-Host "`n[!] Iniciando instalador de dependencias..." -ForegroundColor Cyan
                 powershell -ExecutionPolicy Bypass -File "$PathDeps"
-            } else { Write-Host "`n[-] ERROR: No se encuentra 'instalar_dependencias.ps1' en la raíz." -ForegroundColor Red; Pause }
+            } else { Write-Host "`n[-] ERROR: No se encuentra 'instalar_dependencias.ps1' en la raï¿½z." -ForegroundColor Red; Pause }
         }
         "11" {
-            Write-Host "`n--- CONFIGURACIÓN DE RANGO ---" -ForegroundColor Cyan
+            Write-Host "`n--- CONFIGURACIï¿½N DE RANGO ---" -ForegroundColor Cyan
             $inicio = Read-Host " Ingrese IP INICIAL"
             $fin = Read-Host " Ingrese IP FINAL"
             if ($inicio -match "^\d+$" -and $fin -match "^\d+$") {
@@ -100,8 +110,8 @@ do {
                     $content = $content -replace "IP_END=.*", "IP_END=$fin"
                     Set-Content -Path $EnvPath -Value $content -Encoding UTF8
                     Write-Host "`n[+] Rango actualizado en .env" -ForegroundColor Green
-                } else { Write-Host "`n[-] ERROR: No se encontró archivo .env" -ForegroundColor Red }
-            } else { Write-Host "`n[-] ERROR: Ingrese solo números" -ForegroundColor Red }
+                } else { Write-Host "`n[-] ERROR: No se encontrï¿½ archivo .env" -ForegroundColor Red }
+            } else { Write-Host "`n[-] ERROR: Ingrese solo nï¿½meros" -ForegroundColor Red }
             Pause
         }
         "0" { exit }

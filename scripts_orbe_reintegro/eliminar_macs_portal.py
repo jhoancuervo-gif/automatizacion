@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import requests
 from bs4 import BeautifulSoup
+from urllib.parse import urljoin
 from config import PortalConfig, Config
 
 def login_session():
@@ -51,38 +52,55 @@ def main():
     print(f"🔐 Sesión iniciada. Procesando {len(macs)} equipos...\n")
 
     for mac in macs:
+        # 1. Buscar el equipo
         res = session.get(f"{PortalConfig.SEARCH_URL}{mac}")
-        deactivate_url = None
-
-        # CORRECCIÓN: Ahora buscamos el endpoint 'deactivate' en lugar de 'delete'
-        if '/change/' in res.url:
-            deactivate_url = res.url.replace('/change/', '/deactivate/')[cite: 4]
-
-        else:
-            soup = BeautifulSoup(res.text, 'html.parser')
+        soup = BeautifulSoup(res.text, 'html.parser')
+        
+        change_url = res.url if '/change/' in res.url else None
+        if not change_url:
             link = soup.select_one('#result_list tbody tr th a')
             if link:
-                href = link.get('href')
-                # Cambiamos la sustitución de la URL para apuntar a desactivación
-                deactivate_url = f"{PortalConfig.PORTAL_URL}{href.replace('change/', 'deactivate/')}"[cite: 4]
+                change_url = urljoin(res.url, link.get('href'))
+        
+        if not change_url:
+            print(f" > {mac} -> ⚠️ NO ENCONTRADA")
+            continue
 
-        # --- BLOQUE DE DESACTIVACIÓN ACTUALIZADO ---
-        if deactivate_url:
-            c_res = session.get(deactivate_url)
-            c_soup = BeautifulSoup(c_res.text, 'html.parser')
-
-            csrf_tag = c_soup.find('input', {'name': 'csrfmiddlewaretoken'})
-
-            if csrf_tag:
-                csrf = csrf_tag['value']
-                # Confirmamos la desactivación enviando el POST al nuevo endpoint
-                session.post(deactivate_url, data={'post': 'yes', 'csrfmiddlewaretoken': csrf},
-                             headers={'Referer': deactivate_url})[cite: 4]
+        # 2. Entrar a la página de edición
+        res_edit = session.get(change_url)
+        soup_edit = BeautifulSoup(res_edit.text, 'html.parser')
+        
+        # BUSQUEDA: Buscamos el input de tipo submit con valor 'Deactivate' y clase 'deletelink'
+        deactivate_input = soup_edit.find('input', {'value': 'Deactivate', 'class': 'deletelink'})
+        
+        if deactivate_input:
+            # Identificamos el ID del formulario al que pertenece el botón
+            form_id = deactivate_input.get('form')
+            deactivate_form = soup_edit.find('form', {'id': form_id})
+            
+            if deactivate_form:
+                # Obtenemos la URL de acción del formulario
+                action_url = urljoin(change_url, deactivate_form.get('action', 'deactivate/'))
+                
+                # Capturamos el token CSRF necesario para el POST
+                csrf_token = deactivate_form.find('input', {'name': 'csrfmiddlewaretoken'})['value']
+                
+                # 3. Enviar la desactivación (Simulando el clic en el botón)
+                post_data = {
+                    'csrfmiddlewaretoken': csrf_token,
+                    'post': 'yes'
+                }
+                
+                session.post(action_url, data=post_data, headers={'Referer': change_url})
                 print(f" > {mac} -> ⚪ DESACTIVADA")
             else:
-                print(f" > {mac} -> ❌ ERROR: No se pudo cargar el formulario de desactivación.")
+                # Ruta de respaldo si el formulario no tiene ID explícito
+                fallback_url = change_url.replace('/change/', '/deactivate/')
+                csrf_token = soup_edit.find('input', {'name': 'csrfmiddlewaretoken'})['value']
+                session.post(fallback_url, data={'post': 'yes', 'csrfmiddlewaretoken': csrf_token}, headers={'Referer': change_url})
+                print(f" > {mac} -> ⚪ DESACTIVADA (Ruta alternativa)")
         else:
-            print(f" > {mac} -> ⚠️ NO ENCONTRADA")
+            print(f" > {mac} -> ❌ ERROR: No se encontró el botón 'Deactivate' en la página.")
 
     print("\n==========================================")
     print("✅ PROCESO DE DESACTIVACIÓN FINALIZADO")
@@ -91,8 +109,6 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except KeyboardInterrupt:
-        print("\n⚠️ Proceso cancelado por el usuario.")
     except Exception as e:
         print(f"\n❌ Ocurrió un error inesperado: {e}")
     finally:
