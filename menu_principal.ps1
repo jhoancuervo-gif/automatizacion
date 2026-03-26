@@ -23,7 +23,8 @@ function Mostrar-Menu {
     Write-Host " 7. ORBES REINTEGRO"
     Write-Host "==========================================================" -ForegroundColor Yellow
     Write-Host " 8. TV BOX"
-     Write-Host "==========================================================" -ForegroundColor Yellow
+    Write-Host " 9. VERIFICAR PUERTOS (PRUEBA)"
+    Write-Host "==========================================================" -ForegroundColor Yellow
     Write-Host " 10. INSTALAR DEPENDENCIAS (Configurar nueva PC)" -ForegroundColor Yellow
     Write-Host " 11. CAMBIAR RANGO DE IPs"
     Write-Host " 0. SALIR"
@@ -91,6 +92,16 @@ do {
                 cmd.exe /c configurar_sinapp.bat
                 Set-Location -Path $RootPath
             } else { Write-Host "`n[-] ERROR: No existe carpeta 'configurartvbox_sinapp'" -ForegroundColor Red; Pause }
+        }
+        "9" {
+            $PathCheck = Join-Path $RootPath "check_puerto_poe.ps1"
+            if (Test-Path $PathCheck) {
+                # Ejecuta el script de monitoreo en la misma ventana
+                powershell -ExecutionPolicy Bypass -File "$PathCheck"
+            } else {
+                Write-Host "`n[-] ERROR: Archivo no encontrado." -ForegroundColor Red
+                Pause
+            }
         }
         "10" {
             $LanzadorPath = Join-Path $RootPath "lanzador.bat"
