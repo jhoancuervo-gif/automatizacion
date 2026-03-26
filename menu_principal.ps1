@@ -93,14 +93,18 @@ do {
             } else { Write-Host "`n[-] ERROR: No existe carpeta 'configurartvbox_sinapp'" -ForegroundColor Red; Pause }
         }
         "10" {
-            $PathDeps = Join-Path $RootPath "instalar_dependencias.ps1"
-            if (Test-Path $PathDeps) {
-                Write-Host "`n[!] Iniciando instalador de dependencias..." -ForegroundColor Cyan
-                powershell -ExecutionPolicy Bypass -File "$PathDeps"
-            } else { Write-Host "`n[-] ERROR: No se encuentra 'instalar_dependencias.ps1' en la ra�z." -ForegroundColor Red; Pause }
+            $LanzadorPath = Join-Path $RootPath "lanzador.bat"
+            if (Test-Path $LanzadorPath) {
+                Write-Host "`n[!] Ejecutando lanzador con privilegios..." -ForegroundColor Cyan
+                # Se utiliza Start-Process para que el .bat pueda pedir permisos de Admin por separado
+                Start-Process "$LanzadorPath" -Wait
+            } else { 
+                Write-Host "`n[-] ERROR: No se encuentra 'lanzador.bat' en la raiz." -ForegroundColor Red
+                Pause 
+            }
         }
         "11" {
-            Write-Host "`n--- CONFIGURACI�N DE RANGO ---" -ForegroundColor Cyan
+            Write-Host "`n--- CONFIGURACI N DE RANGO ---" -ForegroundColor Cyan
             $inicio = Read-Host " Ingrese IP INICIAL"
             $fin = Read-Host " Ingrese IP FINAL"
             if ($inicio -match "^\d+$" -and $fin -match "^\d+$") {
@@ -110,8 +114,8 @@ do {
                     $content = $content -replace "IP_END=.*", "IP_END=$fin"
                     Set-Content -Path $EnvPath -Value $content -Encoding UTF8
                     Write-Host "`n[+] Rango actualizado en .env" -ForegroundColor Green
-                } else { Write-Host "`n[-] ERROR: No se encontr� archivo .env" -ForegroundColor Red }
-            } else { Write-Host "`n[-] ERROR: Ingrese solo n�meros" -ForegroundColor Red }
+                } else { Write-Host "`n[-] ERROR: No se encontr  archivo .env" -ForegroundColor Red }
+            } else { Write-Host "`n[-] ERROR: Ingrese solo n meros" -ForegroundColor Red }
             Pause
         }
         "0" { exit }
