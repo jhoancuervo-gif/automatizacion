@@ -23,7 +23,7 @@ function Mostrar-Menu {
     Write-Host " 7. ORBES REINTEGRO"
     Write-Host "==========================================================" -ForegroundColor Yellow
     Write-Host " 8. TV BOX"
-    Write-Host " 9. VERIFICAR PUERTOS (PRUEBA)"
+    Write-Host " 9. VERIFICAR PUERTOS"
     Write-Host "==========================================================" -ForegroundColor Yellow
     Write-Host " 10. INSTALAR DEPENDENCIAS (Configurar nueva PC)" -ForegroundColor Yellow
     Write-Host " 11. CAMBIAR RANGO DE IPs"
