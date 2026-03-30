@@ -1,0 +1,70 @@
+import asyncio
+from datetime import datetime
+import time
+import os
+from extractMac import extraer_mac_real
+from upFirmware import *
+from upConfig import config
+from changePassword import password
+from online import esperar_reinicio_switch
+from config.config import *
+
+async def main():
+    # Solicita al usuario el número de dispositivos a procesar
+    op = int(input("Selecione la cantidad de switch : "))
+    
+    for i in range(op):
+        # Pausa de cortesía entre dispositivos para evitar colisiones
+        if i != 0: 
+            print("Tiempo de esperar 10s para conetar al siguiente switch")
+            time.sleep(10)
+        
+        print(f"\n--- Procesando Switch {i+1} ---")
+        print("Extrayendo MAC desde la tabla del sistema...")
+        time.sleep(5) 
+        
+        # Intenta obtener la dirección MAC real del equipo
+        mac = extraer_mac_real(IP, USER, PASS)
+
+        if mac == "FALLO_TOTAL_LECTURA":
+            print(f"No se pudo leer la MAC. Se procederá con los procesos de igual forma.")
+        else:
+            # Revisa si la MAC ya fue procesada anteriormente en el log
+            existe = False
+            if os.path.exists("log_macs.txt"):
+                with open("log_macs.txt", "r") as r:
+                    if mac in r.read():
+                        existe = True
+
+            # Si es nueva, la registra con hora y fecha en el archivo de texto
+            if existe:
+                print(f"AVISO: La MAC {mac} ya está registrada en el archivo. Saltando registro.")
+            else:
+                print(f"MAC Detectada: {mac}")
+                with open("log_macs.txt", "a") as f:
+                    timestamp = datetime.now().strftime('%H:%M:%S')
+                    f.write(f"[{timestamp}] MAC: {mac}\n")
+
+        print("Iniciando procesos de actualización...")
+        
+        # 1. Ejecuta la actualización de Firmware y espera a que el switch reviva
+        firmware = await mainFirmware()
+        if firmware:
+            inlinefirm = esperar_reinicio_switch(IP, timeout_maximo=180)
+            print("Esperando 20s adicionales para que cargue la interfaz web...")
+            time.sleep(20)
+        # 2. Carga la configuración base y espera el reinicio
+        if inlinefirm:
+            await config()
+            inline_config = esperar_reinicio_switch(IP, timeout_maximo=180) #
+            print("Esperando 20s adicionales para que cargue la interfaz web...")
+            time.sleep(20)
+        else:
+            print("Abortando proceso: El switch no está disponible.")
+        # 3. Cambia las credenciales de acceso finales
+        if inline_config:
+            password()
+            print(f"--- Switch {i+1} Finalizado ---")
+
+if __name__=="__main__":
+    asyncio.run(main())
