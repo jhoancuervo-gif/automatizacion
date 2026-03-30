@@ -26,18 +26,11 @@ goto inicio
 
 :puerto1
 echo.
-echo [!] Iniciando proceso para Puerto 1...
-:: Entramos a la carpeta donde están los scripts y firmwares
-cd /d "%~dp0switch"
-
-:: Ejecutamos el script principal
-python main.py
-
-:: Regresamos a la carpeta principal para que el menú siga funcionando
-cd ..
+echo [!] Iniciando proceso para Puerto 1 (Ejecutando poe.ps1)...
+:: Ejecuta poe.ps1 desde la misma ubicación del .bat
+PowerShell -ExecutionPolicy Bypass -File "%~dp0poe.ps1"
 pause
 goto inicio
-
 :puerto8nuevo
 echo.
 echo [!] Iniciando proceso para Puerto 8 (Nuevo)...
