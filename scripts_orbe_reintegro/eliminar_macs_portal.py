@@ -11,9 +11,24 @@ from dotenv import load_dotenv
 # =========================
 load_dotenv()
 
+# Obtener la ruta de la carpeta donde está el script
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+# Carpeta padre (un nivel arriba)
+PARENT_DIR = os.path.dirname(SCRIPT_DIR)
+
+# Buscar macs.txt en la carpeta padre - RUTA ABSOLUTA
+MAC_FILE_PATH = os.path.join(PARENT_DIR, "macs.txt")
+
 USERNAME = os.getenv("ISP_USERNAME")
 PASSWORD = os.getenv("ISP_PASSWORD")
-MAC_FILE_PATH = os.getenv("MAC_FILE_PATH", r"C:\Phantom_script_ssh\macs.txt")
+
+# Verificar que las credenciales existen
+if not USERNAME or not PASSWORD:
+    print("❌ ERROR: Faltan las credenciales en el archivo .env")
+    print("   Asegúrate de tener configurado:")
+    print("   ISP_USERNAME=tu_usuario")
+    print("   ISP_PASSWORD=tu_contraseña")
+    exit(1)
 
 BASE_URL = "https://isp.somosinternet.com"
 LOGIN_URL = f"{BASE_URL}/admin/login/"
@@ -34,6 +49,19 @@ def normalize_mac(mac):
 
 def read_and_clean_macs():
     try:
+        # Verificar si el archivo existe
+        if not os.path.exists(MAC_FILE_PATH):
+            print(f"❌ El archivo no existe en: {MAC_FILE_PATH}")
+            print(f"   Buscando en: {PARENT_DIR}")
+            # Listar archivos en la carpeta padre para ayudar al usuario
+            if os.path.exists(PARENT_DIR):
+                files = [f for f in os.listdir(PARENT_DIR) if f.endswith('.txt')]
+                if files:
+                    print(f"   Archivos .txt encontrados en la carpeta padre: {', '.join(files)}")
+                else:
+                    print("   No se encontraron archivos .txt en la carpeta padre")
+            return [], []
+
         with open(MAC_FILE_PATH, 'r', encoding='utf-8') as file:
             original_lines = [line.strip() for line in file if line.strip()]
 
@@ -44,14 +72,24 @@ def read_and_clean_macs():
         seen = set()
         unique_macs = []
         for line in original_lines:
-            mac = normalize_mac(line.split(' ')[0].strip())
-            if mac not in seen:
-                seen.add(mac)
-                unique_macs.append(mac)
+            # Saltar líneas que no parecen MACs (como las que tienen | o están vacías)
+            if '|' in line or line.startswith('MAC') or line.startswith('=') or line.startswith('RESULTADOS'):
+                continue
+            # Extraer solo la MAC (primera parte si hay espacios)
+            parts = line.split()
+            if parts:
+                mac_candidate = parts[0]
+                # Verificar si parece una MAC (tiene : o es hexadecimal)
+                if ':' in mac_candidate or (len(mac_candidate) == 12 and mac_candidate.isalnum()):
+                    mac = normalize_mac(mac_candidate)
+                    if mac and mac not in seen:
+                        seen.add(mac)
+                        unique_macs.append(mac)
 
-        backup_path = f"{MAC_FILE_PATH}.backup.{int(time.time())}"
-        shutil.copy(MAC_FILE_PATH, backup_path)
-        print(f"📦 Backup creado: {backup_path}")
+        print(f"📦 Backup creado: {MAC_FILE_PATH}.backup.{int(time.time())}")
+        shutil.copy(MAC_FILE_PATH, f"{MAC_FILE_PATH}.backup.{int(time.time())}")
+        print(f"📄 Archivo MACs encontrado: {MAC_FILE_PATH}")
+        print(f"📊 Total MACs únicas a procesar: {len(unique_macs)}")
 
         return unique_macs, original_lines
     except Exception as e:
@@ -65,7 +103,7 @@ def login_session():
     session.headers.update({'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'})
 
     try:
-        resp = session.get(LOGIN_URL)
+        resp = session.get(LOGIN_URL, timeout=30)
         soup = BeautifulSoup(resp.text, 'html.parser')
         csrf_token = soup.find('input', {'name': 'csrfmiddlewaretoken'})
 
@@ -80,7 +118,7 @@ def login_session():
             "next": "/admin/"
         }
 
-        login_resp = session.post(LOGIN_URL, data=payload, headers={"Referer": LOGIN_URL})
+        login_resp = session.post(LOGIN_URL, data=payload, headers={"Referer": LOGIN_URL}, timeout=30)
 
         if "admin" in login_resp.url or "logout" in login_resp.text.lower() or "cerrar sesión" in login_resp.text.lower():
             print("   ✅ [LOGIN] Sesión conectada y verificada.")
@@ -126,30 +164,37 @@ def extract_details(soup):
 def process_mac(session, mac):
     try:
         search_url = MAC_SEARCH_URL + mac
-        resp = session.get(search_url)
+        resp = session.get(search_url, timeout=30)
 
         if "login" in resp.url.lower():
             print("   ⚠️ Detectada expulsión de sesión. Reconectando...")
             session = login_session()
             if not session: return "session_error", None, session
-            resp = session.get(search_url)
+            resp = session.get(search_url, timeout=30)
 
         soup = BeautifulSoup(resp.text, "html.parser")
         table = soup.find("table")
 
-        if not table: return "not_found", None, session
+        if not table:
+            print(f"   ❌ MAC no encontrada en el sistema")
+            return "not_found", None, session
 
         mac_cells = table.find_all("td", class_="field-mac_address")
-        if not mac_cells: return "not_found", None, session
+        if not mac_cells:
+            print(f"   ❌ MAC no encontrada en el sistema")
+            return "not_found", None, session
 
         displayed_mac = normalize_mac(mac_cells[0].get_text())
-        if displayed_mac != mac: return "mismatch", None, session
+        if displayed_mac != mac:
+            print(f"   ⚠️ MAC no coincide: encontrada {displayed_mac}")
+            return "mismatch", None, session
 
         # Entramos a los detalles del dispositivo
         name_cell = table.find("th", class_="field-name")
         link_tag = name_cell.find("a") if name_cell else None
 
         if not link_tag or not link_tag.get("href"):
+            print(f"   ❌ No se encontró enlace a detalles")
             return "error", None, session
 
         href = link_tag.get("href")
@@ -157,12 +202,12 @@ def process_mac(session, mac):
         parts = [p for p in href.split('/') if p]
         device_id = parts[-2] if len(parts) >= 2 else None
 
-        det_resp = session.get(details_url)
+        det_resp = session.get(details_url, timeout=30)
         det_soup = BeautifulSoup(det_resp.text, "html.parser")
 
         os_val, created_val, modified_val = extract_details(det_soup)
         details_tuple = (os_val, created_val, modified_val)
-        print(f"   ✅ Dispositivo encontrado | OS: {os_val}")
+        print(f"   ✅ Dispositivo encontrado | OS: {os_val} | Created: {created_val}")
 
         # ==========================================================
         # LÓGICA DINÁMICA DEL BOTÓN DE ACCIÓN (.deletelink)
@@ -191,11 +236,11 @@ def process_mac(session, mac):
                 post_url = urljoin(details_url, action) if action else details_url
 
                 # Ejecutamos desactivación y le damos tiempo
-                session.post(post_url, data=payload, headers={"Referer": details_url})
+                session.post(post_url, data=payload, headers={"Referer": details_url}, timeout=30)
                 time.sleep(2)
 
                 # Recargar la página para ver el botón actualizado (que debe ser Delete)
-                det_resp = session.get(details_url)
+                det_resp = session.get(details_url, timeout=30)
                 det_soup = BeautifulSoup(det_resp.text, "html.parser")
                 action_btn = det_soup.find(class_="deletelink")
 
@@ -215,7 +260,7 @@ def process_mac(session, mac):
             # Si el botón Delete nos envía a otra pantalla (es un enlace)
             if action_btn.name == "a" and action_btn.get("href"):
                 delete_url = urljoin(details_url, action_btn.get("href"))
-                del_page = session.get(delete_url)
+                del_page = session.get(delete_url, timeout=30)
                 del_soup = BeautifulSoup(del_page.text, "html.parser")
 
                 target_form = None
@@ -237,12 +282,14 @@ def process_mac(session, mac):
 
                     action = target_form.get("action")
                     post_url = urljoin(delete_url, action) if action else delete_url
-                    session.post(post_url, data=payload, headers={"Referer": delete_url}, allow_redirects=False)
+                    session.post(post_url, data=payload, headers={"Referer": delete_url}, allow_redirects=False,
+                                 timeout=30)
+                    print("   ✅ Solicitud de eliminación enviada")
                 else:
                     print("   ❌ No se encontró formulario en la página de confirmación de Delete.")
                     return "error", details_tuple, session
 
-            # Si el Delete es un submit en la misma página (raro, pero cubierto)
+            # Si el Delete es un submit en la misma página
             elif action_btn.name in ["input", "button"]:
                 form_id = action_btn.get("form")
                 target_form = det_soup.find("form", id=form_id) if form_id else action_btn.find_parent("form")
@@ -259,15 +306,17 @@ def process_mac(session, mac):
 
                     action = target_form.get("action")
                     post_url = urljoin(details_url, action) if action else details_url
-                    session.post(post_url, data=payload, headers={"Referer": details_url}, allow_redirects=False)
+                    session.post(post_url, data=payload, headers={"Referer": details_url}, allow_redirects=False,
+                                 timeout=30)
+                    print("   ✅ Solicitud de eliminación enviada")
         else:
             print(f"   ⚠️ El botón de acción tiene un estado desconocido: {btn_val}")
             return "error", details_tuple, session
 
         # --- PASO 3: PRUEBA DE VIDA ---
-        time.sleep(1)
-        verify_resp = session.get(details_url)
-        if verify_resp.status_code == 404 or device_id not in verify_resp.url:
+        time.sleep(2)
+        verify_resp = session.get(details_url, timeout=30)
+        if verify_resp.status_code == 404 or (device_id and device_id not in verify_resp.url):
             print("   ✅ ¡Eliminado exitosamente! (Confirmado en servidor)")
             return "deleted", details_tuple, session
         else:
@@ -284,18 +333,30 @@ def process_mac(session, mac):
 # =========================
 def main():
     print("=" * 60)
+    print(" ELIMINAR MACS PORTAL")
+    print("=" * 60)
     print(" INICIANDO AUTO-DELETE (OBEDECIENDO AL BOTÓN DELETELINK)")
+    print("=" * 60)
+    print(f"📁 Carpeta del script: {SCRIPT_DIR}")
+    print(f"📁 Buscando macs.txt en: {MAC_FILE_PATH}")
     print("=" * 60)
 
     macs, _ = read_and_clean_macs()
-    if not macs: return
+    if not macs:
+        print("❌ No hay MACs para procesar. Verifica que el archivo macs.txt exista en la carpeta padre.")
+        input("Presione una tecla para continuar...")
+        return
 
     session = login_session()
     if not session:
         print("❌ No se pudo establecer la conexión inicial. Abortando.")
+        input("Presione una tecla para continuar...")
         return
 
     updated_lines = []
+    deleted_count = 0
+    error_count = 0
+    not_found_count = 0
 
     for idx, mac in enumerate(macs, 1):
         print(f"\n🔍 Procesando {idx}/{len(macs)}: {mac}")
@@ -304,29 +365,54 @@ def main():
 
         if result == "not_found":
             updated_lines.append(f"{mac} | MAC NO ENCONTRADA")
+            not_found_count += 1
         elif result == "mismatch":
             print("   ⚠️ MAC NO COINCIDE")
             updated_lines.append(f"{mac} | MAC NO COINCIDE")
+            error_count += 1
         elif result == "session_error":
             updated_lines.append(f"{mac} | ERROR DE SESIÓN (EXPULSADO)")
+            error_count += 1
         elif result == "error":
             updated_lines.append(f"{mac} | ERROR EN PROCESO")
+            error_count += 1
         elif result == "deleted":
             os_val, created_val, modified_val = details if details else ("N/A", "N/A", "N/A")
             updated_lines.append(f"{mac} | ELIMINADO | OS={os_val} | Created={created_val} | Modified={modified_val}")
+            deleted_count += 1
 
+    # Guardar resultados
     try:
         with open(MAC_FILE_PATH, 'w', encoding='utf-8') as file:
+            file.write("=" * 60 + "\n")
+            file.write("RESULTADOS DEL PROCESO DE ELIMINACIÓN\n")
+            file.write("=" * 60 + "\n\n")
+            file.write(f"Total MACs procesadas: {len(macs)}\n")
+            file.write(f"✅ Eliminadas: {deleted_count}\n")
+            file.write(f"❌ Errores: {error_count}\n")
+            file.write(f"🔍 No encontradas: {not_found_count}\n")
+            file.write("\n" + "=" * 60 + "\n\n")
+
             for line in updated_lines:
                 file.write(line + "\n")
 
-            file.write("\n\n")
-
+            file.write("\n" + "=" * 60 + "\n")
+            file.write("LISTADO ORIGINAL DE MACS\n")
+            file.write("=" * 60 + "\n")
             for mac in macs:
                 file.write(mac + "\n")
+
         print(f"\n💾 Resultados guardados en {MAC_FILE_PATH}")
+        print(f"\n📊 RESUMEN:")
+        print(f"   Total procesadas: {len(macs)}")
+        print(f"   ✅ Eliminadas: {deleted_count}")
+        print(f"   ❌ Errores: {error_count}")
+        print(f"   🔍 No encontradas: {not_found_count}")
+
     except Exception as e:
         print(f"❌ Error guardando el archivo: {e}")
+
+    input("\nPresione una tecla para continuar...")
 
 
 if __name__ == "__main__":
