@@ -33,4 +33,4 @@ add address=192.168.10.0/24 dns-server=8.8.8.8,1.1.1.1 gateway=192.168.10.1
  ter instead (bridge1)
 add action=masquerade chain=srcnat out-interface=ether1
 /system identity
-set name=Preconfiguración
+set name=PreconfiguraciónDHCP
