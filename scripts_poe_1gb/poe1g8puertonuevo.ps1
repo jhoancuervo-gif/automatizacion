@@ -1,104 +1,105 @@
 ﻿# =========================================================
-# SCRIPT: poe.ps1 - RUTAS UNIVERSALES Y BACKUP
+# SCRIPT: poe_estable.ps1 - ALTA ESTABILIDAD
 # =========================================================
 
-# Obtiene la carpeta donde está guardado este archivo .ps1 de forma automática
-$currentDir = $PSScriptRoot
-$rootDir    = Split-Path -Parent $currentDir
-$backupDir  = Join-Path $rootDir "backups_macs"
-
-# Define las rutas de los archivos de forma relativa al directorio actual
-$fwFile     = Join-Path $currentDir "upg_appimage.bin"
-$configFile = Join-Path $currentDir "port8_snmp.bin"
-$macFile    = Join-Path $currentDir "mac.txt"
+$baseDir = $PSScriptRoot
+$fwFile  = Join-Path $baseDir "upg_appimage.bin"
+$configFile = Join-Path $baseDir "port8_snmp.bin" # Archivo con Port Forward y DHCP Filter
+$macFile = Join-Path $baseDir "mac.txt"
 
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-
-# Validación rápida: Detener si no existen los archivos necesarios
-if (-not (Test-Path $fwFile)) { 
-    Write-Host " [!] ERROR: No se encuentra '$fwFile' en la carpeta." -ForegroundColor Red
-    pause; exit 
-}
 
 do {
     Clear-Host
     Write-Host "==========================================================" -ForegroundColor Cyan
-    Write-Host "   HELLOTEK - PROCESO DE ALTO RENDIMIENTO (UNIVERSAL)    " -ForegroundColor Cyan
+    Write-Host "   HELLOTEK - PROCESO DE ALTA ESTABILIDAD               " -ForegroundColor Cyan
     Write-Host "==========================================================" -ForegroundColor Cyan
     
     $ip = "192.168.18.1"
-    $auth = "admin:admin"
+    $passwords = @("admin", "somos123.")
+    $auth = ""
+
+    # --- VALIDACIÓN DE ACCESO ---
+    Write-Host "[0/5] Validando acceso..." -NoNewline
+    foreach ($p in $passwords) {
+        $testAuth = "admin:$p"
+        $check = curl.exe -u $testAuth -s -o NUL -w "%{http_code}" "http://$ip/index.htm" --max-time 2
+        if ($check -eq "200") { $auth = $testAuth; break }
+    }
+
+    if (!$auth) {
+        Write-Host " [ERROR: SIN ACCESO]" -ForegroundColor Red
+        $choice = Read-Host "Presione ENTER para reintentar / 'S' para salir"
+        if ($choice -eq "s") { break } else { continue }
+    }
+    Write-Host " [OK]" -ForegroundColor Green
 
     # --- PASO 1: CAPTURA DE MAC ---
-    Write-Host "[1/5] Identificando equipo..." -ForegroundColor Yellow
+    Write-Host "[1/5] Identificando equipo..." -NoNewline
     arp -d $ip 2>$null
     Test-Connection $ip -Count 1 -Quiet | Out-Null
-    
-    $macResult = ""
     $arpTable = arp -a $ip | Out-String
     if ($arpTable -match "([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})") {
         $macResult = $matches[0].ToUpper().Replace("-",":")
-        Write-Host " -> MAC Detectada: $macResult" -ForegroundColor Green
+        Write-Host " -> MAC: $macResult" -ForegroundColor Green
     }
 
-    if ([string]::IsNullOrWhiteSpace($macResult)) {
-        Write-Host " [!] ERROR: No se detectó MAC. Verifique conexión." -ForegroundColor Red
-        $choice = Read-Host "ENTER para reintentar / 'S' para salir"
-        if ($choice -eq "s") { break } else { continue }
-    }
-
-    # --- PASO 2, 3 y 4: CARGAS ---
-    Write-Host "[2/5] Preparando Flash..." -ForegroundColor Yellow
+    # --- PASO 2: PREPARACIÓN FLASH ---
+    Write-Host "[2/5] Preparando Flash..." -NoNewline
     curl.exe -u $auth -s -o NUL -X POST "http://$ip/cgi/toBootLoadUpgrade.cgi" --max-time 5
+    Write-Host " [OK]" -ForegroundColor Green
+    Start-Sleep -Seconds 2
 
+    # --- PASO 3: FIRMWARE CON REINTENTO ---
+    $success = $false
     Write-Host "[3/5] Enviando Firmware..." -NoNewline
-    curl.exe -u $auth -s -o NUL -X POST "http://$ip/cgi/upg_appimage.bin" -F "FN=@$fwFile"
-    Write-Host " [OK]" -ForegroundColor Green
-    Start-Sleep -Seconds 22
+    for($i=1; $i -le 3; $i++){
+        $res = curl.exe -u $auth -s -o NUL -w "%{http_code}" -X POST "http://$ip/cgi/upg_appimage.bin" -F "FN=@$fwFile"
+        if($res -eq "200"){ $success = $true; break }
+        Write-Host " (R$i..)" -NoNewline
+        Start-Sleep -Seconds 3
+    }
+    if($success){ Write-Host " [OK]" -ForegroundColor Green; Start-Sleep -Seconds 25 } 
+    else { Write-Host " [FALLÓ]" -ForegroundColor Red }
 
-    Write-Host "[4/5] Enviando Configuración..." -NoNewline
-    curl.exe -u $auth -s -o NUL -X POST "http://$ip/cgi/SG1008.bin" -F "FN=@$configFile"
-    Write-Host " [OK]" -ForegroundColor Green
+    # --- PASO 4: CONFIGURACIÓN (DHCP Filter y Port Forward) ---
+    # Según manual: El puerto 8 debe quedar apagado en DHCP Filter [cite: 41]
+    Write-Host "[4/5] Enviando Configuracion..." -NoNewline
+    $success = $false
+    for($i=1; $i -le 3; $i++){
+        $res = curl.exe -u $auth -s -o NUL -w "%{http_code}" -X POST "http://$ip/cgi/SG1008.bin" -F "FN=@$configFile"
+        if($res -eq "200"){ $success = $true; break }
+        Write-Host " (R$i..)" -NoNewline
+        Start-Sleep -Seconds 3
+    }
+    if($success){ Write-Host " [OK]" -ForegroundColor Green } 
+    else { Write-Host " [FALLÓ]" -ForegroundColor Red }
 
-    # --- PASO 5: CAMBIO DE CONTRASEÑA REFORZADO ---
-    Write-Host "[5/5] Aplicando seguridad (somos123.)..." -ForegroundColor Yellow
-    
-    Write-Host "Esperando reinicio para validar clave..." -NoNewline
+    # --- PASO 5: SEGURIDAD Y REINICIO ---
+    Write-Host "[5/5] Aplicando seguridad final..." -ForegroundColor Yellow
+    Write-Host "Esperando estabilidad de red..." -NoNewline
     $switchVivo = $false
-    for($i=0; $i -lt 12; $i++) {
+    for($i=0; $i -lt 15; $i++) {
         Write-Host "." -NoNewline
         if(Test-Connection $ip -Count 1 -Quiet) { $switchVivo = $true; break }
         Start-Sleep -Seconds 2
     }
 
     if($switchVivo) {
-        Start-Sleep -Seconds 2 
-        # Referer añadido para compatibilidad con la interfaz web del Hellotek
+        Start-Sleep -Seconds 5 # Tiempo extra para carga de servicios
         curl.exe -u $auth -s -o NUL -X POST "http://$ip/cgi/usermng.cgi" `
         -H "Referer: http://$ip/usermng.htm" `
-        -d "U=admin&NU=admin&U=somos123.&U=somos123." `
+        -d "U=admin&NU=admin&P1=somos123.&P2=somos123." `
         --max-time 5
-        
-        Write-Host " [PETICIÓN ENVIADA]" -ForegroundColor Green
-    } else {
-        Write-Host " [ERROR: TIEMPO AGOTADO]" -ForegroundColor Red
+        Write-Host " [PETICION ENVIADA]" -ForegroundColor Green
     }
 
-    # GUARDADO Y CIERRE (Modificado solo para guardar en local y en backup)
-    if ($macResult) {
-        # 1. Guarda en el mac.txt de su misma carpeta local
-        $macResult | Add-Content -Path $macFile
-        
-        # 2. Guarda el historial en la carpeta backups_macs de la raíz
-        if (-not (Test-Path $backupDir)) { New-Item -ItemType Directory -Path $backupDir | Out-Null }
-        $fecha = Get-Date -Format "yyyy-MM-dd"
-        $historial = Join-Path $backupDir "poe_1gb_historial_$fecha.txt"
-        Add-Content -Path $historial -Value "$(Get-Date -Format 'HH:mm:ss') | 1Gb | $macResult" -Encoding UTF8
-    }
+    # GUARDADO DE RESULTADO
+    if ($macResult) { $macResult | Add-Content -Path $macFile -ErrorAction SilentlyContinue }
 
     Write-Host "========================================" -ForegroundColor Cyan
-    Write-Host "FINALIZADO: $macResult" -ForegroundColor Green
-    [System.Console]::Beep(1000, 150)
+    Write-Host "PROCESO COMPLETADO PARA: $macResult" -ForegroundColor Green
+    [System.Console]::Beep(1000, 200)
 
     $next = Read-Host "Presione ENTER para el siguiente switch / 'S' para salir"
 } while ($next -ne "s")
