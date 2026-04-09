@@ -1,20 +1,24 @@
 @echo off
 cls
-title SUB-MENU: ORBE REINTEGRO
+title SUB-MENU: ORBE REINTEGRO - CUERVO
 :inicio
 cls
-echo ==========================================================
-echo           SUB-MENU: ORBE REINTEGRO - CUERVO
-echo ==========================================================
+:: Interfaz Profesional con Colores de PowerShell
+powershell -Command "Write-Host '  +----------------------------------------------------------+' -ForegroundColor Magenta"
+powershell -Command "Write-Host '  ¦' -NoNewline -ForegroundColor Magenta; Write-Host '               SUB-MENU: ORBE REINTEGRO - CUERVO          ' -NoNewline -ForegroundColor White; Write-Host '¦' -ForegroundColor Magenta"
+powershell -Command "Write-Host '  ¦----------------------------------------------------------¦' -ForegroundColor Magenta"
+powershell -Command "Write-Host '  ¦                                                          ¦' -ForegroundColor Magenta"
+
+powershell -Command "Write-Host '  ¦' -NoNewline -ForegroundColor Magenta; Write-Host '  1. ?? EJECUTAR REINTEGRO (Flashear + Reporte)           ' -NoNewline -ForegroundColor White; Write-Host '¦' -ForegroundColor Magenta"
+powershell -Command "Write-Host '  ¦' -NoNewline -ForegroundColor Magenta; Write-Host '  2. ?? VERIFICAR EN PORTAL (macs.txt)                    ' -NoNewline -ForegroundColor White; Write-Host '¦' -ForegroundColor Magenta"
+powershell -Command "Write-Host '  ¦' -NoNewline -ForegroundColor Magenta; Write-Host '  3. ? ELIMINAR DEL PORTAL (macs.txt)                     ' -NoNewline -ForegroundColor White; Write-Host '¦' -ForegroundColor Magenta"
+
+powershell -Command "Write-Host '  ¦                                                          ¦' -ForegroundColor Magenta"
+powershell -Command "Write-Host '  ¦----------------------------------------------------------¦' -ForegroundColor Magenta"
+powershell -Command "Write-Host '  ¦' -NoNewline -ForegroundColor Magenta; Write-Host '  0. ??  VOLVER AL MENU PRINCIPAL                          ' -NoNewline -ForegroundColor Yellow; Write-Host '¦' -ForegroundColor Magenta"
+powershell -Command "Write-Host '  +----------------------------------------------------------+' -ForegroundColor Magenta"
 echo.
-echo  1. EJECUTAR REINTEGRO (Solo Flashear + Abrir Reporte)
-echo  2. VERIFICAR MACs EN PORTAL (macs.txt)
-echo  3. ELIMINAR MACs DEL PORTAL (macs.txt)
-echo.
-echo  0. VOLVER AL MENU PRINCIPAL
-echo.
-echo ==========================================================
-set /p "op= Seleccione una opcion: "
+set /p "op=  >> Seleccione una opción: "
 
 if "%op%"=="1" goto flashear
 if "%op%"=="2" goto verificar
@@ -24,23 +28,23 @@ goto inicio
 
 :flashear
 echo.
-echo [!] Iniciando proceso de flasheo de Orbes...
+powershell -Command "Write-Host '  [!] Iniciando proceso de flasheo de Orbes...' -ForegroundColor Cyan"
 python orbe_reintegro.py
 echo.
-echo [+] Flasheo finalizado. Reporte abierto en Bloc de notas.
+powershell -Command "Write-Host '  [+] Flasheo finalizado. Reporte abierto en Bloc de notas.' -ForegroundColor Green"
 pause
 goto inicio
 
 :verificar
 echo.
-echo [!] Consultando portal para equipos en macs.txt...
+powershell -Command "Write-Host '  [!] Consultando portal para equipos en macs.txt...' -ForegroundColor Cyan"
 python verificar_macs_portal.py
-:: La pausa ahora la maneja el script de Python automÃ¡ticamente
+:: La pausa la maneja el script de Python según tu código original
 goto inicio
 
 :eliminar
 echo.
-echo [!] Iniciando borrado en portal para equipos en macs.txt...
+powershell -Command "Write-Host '  [!] Iniciando borrado en portal para equipos en macs.txt...' -ForegroundColor Red"
 python eliminar_macs_portal.py
-:: La pausa ahora la maneja el script de Python automÃ¡ticamente
+pause
 goto inicio

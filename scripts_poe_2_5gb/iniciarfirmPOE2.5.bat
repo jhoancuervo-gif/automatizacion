@@ -3,22 +3,28 @@ cls
 title SUB-MENU: GESTION DE SWITCHES POE 2.5G - CUERVO
 :inicio
 cls
-echo ==========================================================
-echo           SUB-MENU: GESTION DE SWITCHES POE 2.5G
-echo ==========================================================
+:: Interfaz Profesional con Colores de PowerShell
+powershell -Command "Write-Host '  +----------------------------------------------------------+' -ForegroundColor Magenta"
+powershell -Command "Write-Host '  ¦' -NoNewline -ForegroundColor Magenta; Write-Host '           SUB-MENU: GESTIÓN DE SWITCHES POE 2.5G         ' -NoNewline -ForegroundColor White; Write-Host '¦' -ForegroundColor Magenta"
+powershell -Command "Write-Host '  ¦----------------------------------------------------------¦' -ForegroundColor Magenta"
+powershell -Command "Write-Host '  ¦                                                          ¦' -ForegroundColor Magenta"
+
+powershell -Command "Write-Host '  ¦' -NoNewline -ForegroundColor Magenta; Write-Host '  1. EQUIPO NUEVO PUERTO 1        4. CONFIG. PUERTO 1     ' -NoNewline -ForegroundColor White; Write-Host '¦' -ForegroundColor Magenta"
+powershell -Command "Write-Host '  ¦' -NoNewline -ForegroundColor Magenta; Write-Host '  2. EQUIPO NUEVO PUERTO 8        3. CONFIG. PUERTO 8     ' -NoNewline -ForegroundColor White; Write-Host '¦' -ForegroundColor Magenta"
+
+powershell -Command "Write-Host '  ¦                                                          ¦' -ForegroundColor Magenta"
+powershell -Command "Write-Host '  ¦----------------------------------------------------------¦' -ForegroundColor Magenta"
+powershell -Command "Write-Host '  ¦' -NoNewline -ForegroundColor Magenta; Write-Host '  [ ?? RED / IP ]                                         ' -NoNewline -ForegroundColor White; Write-Host '¦' -ForegroundColor Magenta"
+
+powershell -Command "Write-Host '  ¦' -NoNewline -ForegroundColor Magenta; Write-Host '  5. CONFIGURAR IP FIJA (192.168.18.2)                    ' -NoNewline -ForegroundColor Cyan; Write-Host '¦' -ForegroundColor Magenta"
+powershell -Command "Write-Host '  ¦' -NoNewline -ForegroundColor Magenta; Write-Host '  6. REVERTIR IP A DHCP (INTERNET)                        ' -NoNewline -ForegroundColor Cyan; Write-Host '¦' -ForegroundColor Magenta"
+
+powershell -Command "Write-Host '  ¦                                                          ¦' -ForegroundColor Magenta"
+powershell -Command "Write-Host '  ¦----------------------------------------------------------¦' -ForegroundColor Magenta"
+powershell -Command "Write-Host '  ¦' -NoNewline -ForegroundColor Magenta; Write-Host '  0. ??  VOLVER AL MENU PRINCIPAL                          ' -NoNewline -ForegroundColor Yellow; Write-Host '¦' -ForegroundColor Magenta"
+powershell -Command "Write-Host '  +----------------------------------------------------------+' -ForegroundColor Magenta"
 echo.
-echo  1. EQUIPO NUEVO PUERTO 1 
-echo  2. EQUIPO NUEVO PUERTO 8 
-echo  3. CAMBIAR CONFIGURACION PUERTO 8 
-echo  4. CAMBIAR CONFIGURACION PUERTO 1
-echo ----------------------------------------------------------
-echo  5. CONFIGURAR IP FIJA (192.168.18.2)
-echo  6. REVERTIR IP A DHCP (INTERNET)
-echo.
-echo  0. VOLVER AL MENU PRINCIPAL
-echo.
-echo ==========================================================
-set /p "op= Seleccione una opcion: "
+set /p "op=  >> Seleccione una opcion: "
 
 if "%op%"=="1" goto puerto1
 if "%op%"=="2" goto puerto8nuevo
@@ -31,43 +37,42 @@ goto inicio
 
 :puerto1
 echo.
-echo [!] Iniciando proceso para puerto 1 (Nuevo)...
+powershell -Command "Write-Host '  [!] Iniciando proceso para puerto 1 (Nuevo)...' -ForegroundColor Cyan"
 PowerShell -ExecutionPolicy Bypass -File "%~dp0poe_25g_MASTER.ps1"
 pause
 goto inicio
 
 :puerto8nuevo
 echo.
-echo [!] Iniciando proceso para Puerto 8 (Nuevo)...
+powershell -Command "Write-Host '  [!] Iniciando proceso para Puerto 8 (Nuevo)...' -ForegroundColor Cyan"
 PowerShell -ExecutionPolicy Bypass -File "%~dp0poe2.5puerto8nuevo.ps1"
 pause
 goto inicio
 
 :firmware8
 echo.
-echo [!] Iniciando Cambio de Firmware Puerto 8...
+powershell -Command "Write-Host '  [!] Iniciando Cambio de Firmware Puerto 8...' -ForegroundColor Cyan"
 PowerShell -ExecutionPolicy Bypass -File "%~dp0firmware2.5_8.ps1"
 pause
 goto inicio
 
 :configuracion8
 echo.
-echo [!] Iniciando Cambio de Configuracion Puerto 1...
+powershell -Command "Write-Host '  [!] Iniciando Cambio de Configuración Puerto 1...' -ForegroundColor Cyan"
 PowerShell -ExecutionPolicy Bypass -File "%~dp0configuracion2.5_1.ps1"
 pause
 goto inicio
 
 :configurar_ip
 echo.
-echo [!] Aplicando IP Estatica Definitiva...
-:: AsegÃºrate de que el nombre del archivo coincida con el que guardaste
+powershell -Command "Write-Host '  [!] Aplicando IP Estática Definitiva...' -ForegroundColor Green"
 PowerShell -ExecutionPolicy Bypass -File "%~dp0Configurar Ip poe.ps1"
 pause
 goto inicio
 
 :revertir_ip
 echo.
-echo [!] Restaurando adaptador a modo DHCP...
+powershell -Command "Write-Host '  [!] Restaurando adaptador a modo DHCP...' -ForegroundColor Yellow"
 PowerShell -ExecutionPolicy Bypass -File "%~dp0revertir_ip.ps1"
 pause
 goto inicio

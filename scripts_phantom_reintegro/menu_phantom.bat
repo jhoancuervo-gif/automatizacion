@@ -1,88 +1,78 @@
 @echo off
 setlocal enabledelayedexpansion
 cls
-title MENU PHANTOM REINTEGRO
+title MENU PHANTOM REINTEGRO - CUERVO
 
 :menu
 cls
-echo ============================
-echo   MENU PHANTOM REINTEGRO
-echo ============================
-echo   1. REINTEGRO COMPLETO
-echo   2. REINTEGRO PERSONALIZADO
-echo   3. PRUEBA DE CONEXION
-echo   4. VERIFICAR MACs PORTAL
-echo   5. ELIMINAR MACs PORTAL
-echo   6. VOLVER AL MENU PRINCIPAL
-echo ============================
+:: Interfaz Profesional con Colores de PowerShell
+powershell -Command "Write-Host '  +----------------------------------------------------------+' -ForegroundColor Magenta"
+powershell -Command "Write-Host '  ¦' -NoNewline -ForegroundColor Magenta; Write-Host '             MENU: PHANTOM REINTEGRO                      ' -NoNewline -ForegroundColor White; Write-Host '¦' -ForegroundColor Magenta"
+powershell -Command "Write-Host '  ¦----------------------------------------------------------¦' -ForegroundColor Magenta"
+powershell -Command "Write-Host '  ¦                                                          ¦' -ForegroundColor Magenta"
+
+powershell -Command "Write-Host '  ¦' -NoNewline -ForegroundColor Magenta; Write-Host '  1. REINTEGRO COMPLETO           4. VERIFICAR MACS PORTAL' -NoNewline -ForegroundColor White; Write-Host '¦' -ForegroundColor Magenta"
+powershell -Command "Write-Host '  ¦' -NoNewline -ForegroundColor Magenta; Write-Host '  2. REINTEGRO PERSONALIZADO      5. ELIMINAR MACS PORTAL ' -NoNewline -ForegroundColor White; Write-Host '¦' -ForegroundColor Magenta"
+powershell -Command "Write-Host '  ¦' -NoNewline -ForegroundColor Magenta; Write-Host '  3. PRUEBA DE CONEXION                                   ' -NoNewline -ForegroundColor White; Write-Host '¦' -ForegroundColor Magenta"
+
+powershell -Command "Write-Host '  ¦                                                          ¦' -ForegroundColor Magenta"
+powershell -Command "Write-Host '  ¦----------------------------------------------------------¦' -ForegroundColor Magenta"
+powershell -Command "Write-Host '  ¦' -NoNewline -ForegroundColor Magenta; Write-Host '  0. ??  VOLVER AL MENU PRINCIPAL                         ' -NoNewline -ForegroundColor Yellow; Write-Host '¦' -ForegroundColor Magenta"
+powershell -Command "Write-Host '  +----------------------------------------------------------+' -ForegroundColor Magenta"
 echo.
-set /p "opcion=Seleccione: "
+set /p "opcion=  >> Seleccione una opcion: "
 
 if "%opcion%"=="1" goto op1
 if "%opcion%"=="2" goto op2
 if "%opcion%"=="3" goto op3
 if "%opcion%"=="4" goto op4
 if "%opcion%"=="5" goto op5
-if "%opcion%"=="6" goto :eof
-
-echo Opcion no valida
-pause
+if "%opcion%"=="0" exit
 goto menu
 
 :op1
 echo.
-echo REINTEGRO COMPLETO (212-215)
-echo.
-python phantom_reintegro.py
+powershell -Command "Write-Host '  [!] Ejecutando REINTEGRO COMPLETO...' -ForegroundColor Cyan" [cite: 19]
+python phantom_reintegro.py [cite: 19]
 pause
 goto menu
 
 :op2
 echo.
-echo REINTEGRO PERSONALIZADO
-echo.
+powershell -Command "Write-Host '  [!] Ejecutando REINTEGRO PERSONALIZADO...' -ForegroundColor Cyan"
 python phantom_reintegro.py
 pause
 goto menu
 
 :op3
 echo.
-echo PRUEBA DE CONEXION
-echo.
-python phantom_reintegro.py
+powershell -Command "Write-Host '  [!] Iniciando PRUEBA DE CONEXIÓN...' -ForegroundColor Cyan"
+python phantom_reintegro.py [cite: 20]
 pause
 goto menu
 
 :op4
-cls
-echo ============================
-echo   VERIFICAR MACs PORTAL
-echo ============================
 echo.
-if exist "..\macs.txt" (
-    echo Archivo macs.txt encontrado en la raiz
-    echo.
-    set /p "continuar=Continuar? (S/N): "
-    if /i "!continuar!"=="S" (
-        python verificar_macs_portal.py
+powershell -Command "Write-Host '  --- VERIFICAR MACs PORTAL ---' -ForegroundColor Cyan" [cite: 21]
+if exist "..\macs.txt" ( [cite: 21]
+    powershell -Command "Write-Host '  [+] Archivo macs.txt encontrado en la raiz' -ForegroundColor Green" [cite: 21]
+    set /p "continuar=  >> ¿Continuar? (S/N): " [cite: 21]
+    if /i "!continuar!"=="S" ( [cite: 21]
+        python verificar_macs_portal.py [cite: 21]
     )
 ) else (
-    echo No hay archivo macs.txt en la raiz de automatizacion.
-    echo Ejecute primero un proceso para capturar MACs.
+    powershell -Command "Write-Host '  [-] ERROR: No hay archivo macs.txt en la raiz.' -ForegroundColor Red" [cite: 21]
 )
 pause
 goto menu
 
 :op5
-cls
-echo ============================
-echo   ELIMINAR MACs PORTAL
-echo ============================
 echo.
-if exist "..\macs.txt" (
-    python eliminar_macs_portal.py
+powershell -Command "Write-Host '  --- ELIMINAR MACs PORTAL ---' -ForegroundColor Red" [cite: 22]
+if exist "..\macs.txt" ( [cite: 22]
+    python eliminar_macs_portal.py [cite: 22]
 ) else (
-    echo No hay archivo macs.txt en la raiz de automatizacion.
+    powershell -Command "Write-Host '  [-] ERROR: No hay archivo macs.txt para eliminar.' -ForegroundColor Red" [cite: 22]
 )
 pause
 goto menu
