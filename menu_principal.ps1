@@ -114,8 +114,12 @@ do {
             } else { Write-Host "`n  [-] ERROR: No existe carpeta 'scripts_phantom_f2_reintegro'" -ForegroundColor Red; Pause }
         }
         "5" { 
-            Write-Host "`n  [!] Ejecutando Phantom F2..." -ForegroundColor Cyan
-            Pause
+            $Path = Join-Path $RootPath "scripts_phantom_f2"
+            if (Test-Path $Path) {
+                Set-Location -Path $Path
+                cmd.exe /c menu_phantomf2nuevos.bat
+                Set-Location -Path $RootPath
+            } else { Write-Host "`n  [-] ERROR: No existe carpeta 'scripts_phantom_f2'" -ForegroundColor Red; Pause }
         }
         "6" { 
             $Path = Join-Path $RootPath "scripts_phantom_nuevos"
