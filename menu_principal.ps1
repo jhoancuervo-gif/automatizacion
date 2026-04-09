@@ -1,4 +1,4 @@
-# =====================================================================
+﻿# =====================================================================
 # MENU PRINCIPAL INTEGRADO - VERSION PROFESIONAL MAGENTA
 # =====================================================================
 $ErrorActionPreference = "SilentlyContinue"
@@ -9,35 +9,66 @@ $EnvPath = Join-Path $RootPath ".env"
 
 function Mostrar-Menu {
     Clear-Host
-    Write-Host "`n  ==========================================================" -ForegroundColor Magenta
-    Write-Host "      SISTEMA DE AUTOMATIZACION - ESTACION DE TRABAJO     " -ForegroundColor Cyan
-    Write-Host "  ==========================================================" -ForegroundColor Magenta
+    # Bordes en Magenta, Título en Blanco
+    Write-Host "  ╔══════════════════════════════════════════════════════════╗" -ForegroundColor Magenta
+    Write-Host "  ║" -NoNewline -ForegroundColor Magenta
+    Write-Host "  🚀  SISTEMA DE AUTOMATIZACIÓN - ESTACIÓN DE TRABAJO     " -NoNewline -ForegroundColor White
+    Write-Host "║" -ForegroundColor Magenta
+    Write-Host "  ╠══════════════════════════════════════════════════════════╣" -ForegroundColor Magenta
     
-    Write-Host "  [ INFRAESTRUCTURA RED ]" -ForegroundColor Red
-    Write-Host "   1. SWITCH POE 1.0 Gb"
-    Write-Host "   2. SWITCH POE 2.5 Gb"
-    Write-Host "  ----------------------------------------------------------" -ForegroundColor Magenta
+    # Cuerpo del menú
+    Write-Host "  ║                                                          ║" -ForegroundColor Magenta
+    Write-Host "  ║" -NoNewline -ForegroundColor Magenta
+    Write-Host "  [ 📡 POE´S ]                    [ 👻 PHANTOM´S ]        " -NoNewline -ForegroundColor White
+    Write-Host "║" -ForegroundColor Magenta
     
-    Write-Host "  [ DISPOSITIVOS PHANTOM ]" -ForegroundColor Red
-    Write-Host "   3. PHANTOM F2"
-    Write-Host "   4. PHANTOM NUEVOS"
-    Write-Host "   5. PHANTOM REINTEGRO"
-    Write-Host "  ----------------------------------------------------------" -ForegroundColor Magenta
+    Write-Host "  ║" -NoNewline -ForegroundColor Magenta
+    Write-Host "  1. Switch PoE 1.0 Gb             3. Phantom F2 (TEST)   " -NoNewline -ForegroundColor White
+    Write-Host "║" -ForegroundColor Magenta
     
-    Write-Host "  [ GESTION DE ORBES ]" -ForegroundColor Red
-    Write-Host "   6. ORBES NUEVAS"
-    Write-Host "   7. ORBES REINTEGRO"
-    Write-Host "  ==========================================================" -ForegroundColor Magenta
+    Write-Host "  ║" -NoNewline -ForegroundColor Magenta
+    Write-Host "  2. Switch PoE 2.5 Gb             4. Phantom Nuevos      " -NoNewline -ForegroundColor White
+    Write-Host "║" -ForegroundColor Magenta
     
-    Write-Host "   8. TV BOX (CONFIGURAR SIN APP)"
-    Write-Host "   9. VERIFICAR PUERTOS ACTIVOS"
-    Write-Host "  ==========================================================" -ForegroundColor Magenta
+    Write-Host "  ║" -NoNewline -ForegroundColor Magenta
+    Write-Host "                                   5. Phantom Reintegro   " -NoNewline -ForegroundColor White
+    Write-Host "║" -ForegroundColor Magenta
+    Write-Host "  ║                                                          ║" -ForegroundColor Magenta
     
-    Write-Host "   10. INSTALAR DEPENDENCIAS (NUEVA PC)" -ForegroundColor Yellow
-    Write-Host "   11. CONFIGURAR RANGO DE IPs"
-    Write-Host "   0.  SALIR DEL SISTEMA"
-    Write-Host "  ==========================================================" -ForegroundColor Magenta
-    Write-Host "`n  Seleccione una opcion: " -NoNewline
+    Write-Host "  ║" -NoNewline -ForegroundColor Magenta
+    Write-Host "  [ 🔍 MONITOREO ]                [ 🔮 ORB´S ]            " -NoNewline -ForegroundColor White
+    Write-Host "║" -ForegroundColor Magenta
+    
+    Write-Host "  ║" -NoNewline -ForegroundColor Magenta
+    Write-Host "  8. 📺 TV BOX                     6. Orbes Nuevas        " -NoNewline -ForegroundColor White
+    Write-Host "║" -ForegroundColor Magenta
+    
+    Write-Host "  ║" -NoNewline -ForegroundColor Magenta
+    Write-Host "  9. Verificar Puertos             7. Orbes Reintegro     " -NoNewline -ForegroundColor White
+    Write-Host "║" -ForegroundColor Magenta
+    
+    Write-Host "  ║                                                          ║" -ForegroundColor Magenta
+    Write-Host "  ╠══════════════════════════════════════════════════════════╣" -ForegroundColor Magenta
+    
+    Write-Host "  ║" -NoNewline -ForegroundColor Magenta
+    Write-Host "  [ ⚙️ CONFIGURACIÓN ]                                    " -NoNewline -ForegroundColor White
+    Write-Host "║" -ForegroundColor Magenta
+    
+    Write-Host "  ║" -NoNewline -ForegroundColor Magenta
+    Write-Host "  10. Instalar Dependencias (Nueva PC)                    " -NoNewline -ForegroundColor Yellow
+    Write-Host "║" -ForegroundColor Magenta
+    
+    Write-Host "  ║" -NoNewline -ForegroundColor Magenta
+    Write-Host "  11.🌐 Cambiar Rango de IPs                              " -NoNewline -ForegroundColor White
+    Write-Host "║" -ForegroundColor Magenta
+    
+    Write-Host "  ║" -NoNewline -ForegroundColor Magenta
+    Write-Host "  0. ❌ Salir                                             " -NoNewline -ForegroundColor White
+    Write-Host "║" -ForegroundColor Magenta
+    
+    Write-Host "  ╚══════════════════════════════════════════════════════════╝" -ForegroundColor Magenta
+    Write-Host ""
+    Write-Host "  >> Seleccione una opción: " -NoNewline -ForegroundColor White
 }
 
 do {
@@ -60,6 +91,14 @@ do {
                 cmd.exe /c iniciarfirmPOE2.5.bat
                 Set-Location -Path $RootPath
             } else { Write-Host "`n  [-] ERROR: No existe carpeta 'scripts_poe_2_5gb'" -ForegroundColor Red; Pause }
+        }
+	"3" { 
+            $Path = Join-Path $RootPath "scripts_phantom_f2"
+            if (Test-Path $Path) {
+                Set-Location -Path $Path
+                cmd.exe /c menu_phantomf2.bat
+                Set-Location -Path $RootPath
+            } else { Write-Host "`n  [-] ERROR: No existe carpeta 'scripts_phantom_f2'" -ForegroundColor Red; Pause }
         }
         "4" { 
             $Path = Join-Path $RootPath "scripts_phantom_nuevos"
