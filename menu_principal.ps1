@@ -40,16 +40,16 @@ function Mostrar-Menu {
     Write-Host "  ╠══════════════════════════════════════════════════════════╣" -ForegroundColor $M
     Write-Host "  ║                                                          ║" -ForegroundColor $M
     
-    Write-Host "  ║" -NoNewline -ForegroundColor $M; Write-Host "  [ 📡 POE´S ]                    [ 👻 PHANTOM´S ]        " -NoNewline -ForegroundColor $W; Write-Host "║" -ForegroundColor $M
+    Write-Host "  ║" -NoNewline -ForegroundColor $M; Write-Host "  [ 📡 POE´S ]                    [ 👻 PHANTOM´S ]        " -NoNewline -ForegroundColor DarkBlue; Write-Host "║" -ForegroundColor $M
     Write-Host "  ║" -NoNewline -ForegroundColor $M; Write-Host "  1. Switch PoE 1.0 Gb             4. Phantom F2 Reintegro" -NoNewline -ForegroundColor $W; Write-Host "║" -ForegroundColor $M
     Write-Host "  ║" -NoNewline -ForegroundColor $M; Write-Host "  2. Switch PoE 2.5 Gb             5. Phantom F2 (TEST)   " -NoNewline -ForegroundColor $W; Write-Host "║" -ForegroundColor $M
     Write-Host "  ║" -NoNewline -ForegroundColor $M; Write-Host "  3. 🔍 Verificar Puertos          6. Phantom Nuevos      " -NoNewline -ForegroundColor $W; Write-Host "║" -ForegroundColor $M
     Write-Host "  ║" -NoNewline -ForegroundColor $M; Write-Host "                                   7. Phantom Reintegro   " -NoNewline -ForegroundColor $W; Write-Host "║" -ForegroundColor $M
     
     Write-Host "  ║                                                          ║" -ForegroundColor $M
-    Write-Host "  ║" -NoNewline -ForegroundColor $M; Write-Host "  [ 🔍 MONITOREO ]                [ 🔮 ORB´S ]            " -NoNewline -ForegroundColor $W; Write-Host "║" -ForegroundColor $M
+    Write-Host "  ║" -NoNewline -ForegroundColor $M; Write-Host "  [ 🔍 MONITOREO ]                [ 🔮 ORB´S ]            " -NoNewline -ForegroundColor DarkBlue; Write-Host "║" -ForegroundColor $M
     Write-Host "  ║" -NoNewline -ForegroundColor $M; Write-Host "  10. 📺 TV BOX                    8. Orbes Nuevas        " -NoNewline -ForegroundColor $W; Write-Host "║" -ForegroundColor $M
-    Write-Host "  ║                                   9. Orbes Reintegro     " -NoNewline -ForegroundColor $W; Write-Host "║" -ForegroundColor $M
+    Write-Host "  ║" -NoNewline -ForegroundColor $M; Write-Host "                                   9. Orbes Reintegro     " -NoNewline -ForegroundColor $W; Write-Host "║" -ForegroundColor $M
     
     Write-Host "  ║                                                          ║" -ForegroundColor $M
     Write-Host "  ╠══════════════════════════════════════════════════════════╣" -ForegroundColor $M
