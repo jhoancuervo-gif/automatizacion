@@ -52,14 +52,14 @@ goto inicio
 :firmware8
 echo.
 powershell -Command "Write-Host '  [!] Iniciando Cambio de Firmware Puerto 8...' -ForegroundColor Cyan"
-PowerShell -ExecutionPolicy Bypass -File "%~dp0firmware2.5_8.ps1"
+PowerShell -ExecutionPolicy Bypass -File "%~dp0puerto1reintegro.ps1"
 pause
 goto inicio
 
 :configuracion8
 echo.
 powershell -Command "Write-Host '  [!] Iniciando Cambio de Configuración Puerto 1...' -ForegroundColor Cyan"
-PowerShell -ExecutionPolicy Bypass -File "%~dp0configuracion2.5_1.ps1"
+PowerShell -ExecutionPolicy Bypass -File "%~dp0poeport82.5.ps1"
 pause
 goto inicio
 
