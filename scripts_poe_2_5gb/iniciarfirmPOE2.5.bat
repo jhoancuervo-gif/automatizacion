@@ -9,8 +9,8 @@ powershell -Command "Write-Host '  ¦' -NoNewline -ForegroundColor Magenta; Write
 powershell -Command "Write-Host '  ¦----------------------------------------------------------¦' -ForegroundColor Magenta"
 powershell -Command "Write-Host '  ¦                                                          ¦' -ForegroundColor Magenta"
 
-powershell -Command "Write-Host '  ¦' -NoNewline -ForegroundColor Magenta; Write-Host '  1. EQUIPO NUEVO PUERTO 1        4. CONFIG. PUERTO 1     ' -NoNewline -ForegroundColor White; Write-Host '¦' -ForegroundColor Magenta"
-powershell -Command "Write-Host '  ¦' -NoNewline -ForegroundColor Magenta; Write-Host '  2. EQUIPO NUEVO PUERTO 8        3. CONFIG. PUERTO 8     ' -NoNewline -ForegroundColor White; Write-Host '¦' -ForegroundColor Magenta"
+powershell -Command "Write-Host '  ¦' -NoNewline -ForegroundColor Magenta; Write-Host '  1. EQUIPO NUEVO PUERTO 1        3. CONFIG. PUERTO 1     ' -NoNewline -ForegroundColor White; Write-Host '¦' -ForegroundColor Magenta"
+powershell -Command "Write-Host '  ¦' -NoNewline -ForegroundColor Magenta; Write-Host '  2. EQUIPO NUEVO PUERTO 8        4. CONFIG. PUERTO 8     ' -NoNewline -ForegroundColor White; Write-Host '¦' -ForegroundColor Magenta"
 
 powershell -Command "Write-Host '  ¦                                                          ¦' -ForegroundColor Magenta"
 powershell -Command "Write-Host '  ¦----------------------------------------------------------¦' -ForegroundColor Magenta"
