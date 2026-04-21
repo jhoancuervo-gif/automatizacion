@@ -8,13 +8,20 @@ $host.ui.RawUI.WindowTitle = "Automation Station - $env:USERNAME"
 $RootPath = $PSScriptRoot
 $EnvPath = Join-Path $RootPath ".env"
 
+# Cachear IP una sola vez al cargar la aplicación
+$script:IP = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.InterfaceAlias -like "*Ethernet*" -or $_.InterfaceAlias -like "*Wi-Fi*" } | Select-Object -First 1).IPAddress
+
 # --- Función para ejecutar herramientas sin repetir código ---
 function Ejecutar-Herramienta {
-    param([string]$SubDir, [string]$BatFile)
+    param([string]$SubDir, [string]$ScriptName)
     $Path = Join-Path $RootPath $SubDir
     if (Test-Path $Path) {
         Push-Location $Path
-        cmd.exe /c $BatFile
+        if ($ScriptName.EndsWith(".bat")) {
+            cmd.exe /c $ScriptName
+        } elseif ($ScriptName.EndsWith(".ps1")) {
+            & .\$ScriptName
+        }
         Pop-Location
     } else { 
         Write-Host "`n  [!] ERROR: Carpeta '$SubDir' no encontrada." -ForegroundColor Red
@@ -27,11 +34,10 @@ function Mostrar-Menu {
     $M = "Magenta"; $W = "White"; $C = "Cyan"; $Y = "Yellow"
 
     # --- BARRA DE ESTADO DINÁMICA ---
-    # Obtiene la IP local activa (Ethernet o Wi-Fi)
-    $IP = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.InterfaceAlias -like "*Ethernet*" -or $_.InterfaceAlias -like "*Wi-Fi*" } | Select-Object -First 1).IPAddress
+    # IP Activa y hora del sistema
     $Fecha = Get-Date -Format "HH:mm:ss"
     
-    Write-Host "  IP: $($IP.PadRight(15)) | HOST: $($env:COMPUTERNAME.PadRight(15)) | $Fecha" -ForegroundColor $C
+    Write-Host "  IP: $($script:IP.PadRight(15)) | HOST: $($env:COMPUTERNAME.PadRight(15)) | $Fecha" -ForegroundColor $C
     
     # --- DISEÑO DEL MENÚ ---
 	Write-Host ""
@@ -69,18 +75,18 @@ do {
     $opcion = Read-Host
 
     switch ($opcion) {
-        "1"  { Ejecutar-Herramienta "scripts_poe_1gb" "iniciarfirmPOE.bat" }
-        "2"  { Ejecutar-Herramienta "scripts_poe_2_5gb" "iniciarfirmPOE2.5.bat" }
+        "1"  { Ejecutar-Herramienta "scripts_poe_1gb" "iniciarfirmPOE.ps1" }
+        "2"  { Ejecutar-Herramienta "scripts_poe_2_5gb" "iniciarfirmPOE2.5.ps1" }
         "3"  { 
             $f = Join-Path $RootPath "check_puerto_poe.ps1"
-            if (Test-Path $f) { powershell -ExecutionPolicy Bypass -File "$f" } else { Write-Host "Error"; Pause }
+            if (Test-Path $f) { & $f } else { Write-Host "Error"; Pause }
         }
         "4"  { Ejecutar-Herramienta "scripts_phantom_f2_reintegro" "menu_phantomf2.bat" }
         "5"  { Ejecutar-Herramienta "scripts_phantom_f2" "menu_phantomf2nuevos.bat" }
         "6"  { Ejecutar-Herramienta "scripts_phantom_nuevos" "menu_phantom_nuevos.bat" }
-        "7"  { Ejecutar-Herramienta "scripts_phantom_reintegro" "menu_phantom.bat" }
-        "8"  { Ejecutar-Herramienta "scripts_orbes_nuevas" "menu_orbes_nuevas.bat" }
-        "9"  { Ejecutar-Herramienta "scripts_orbe_reintegro" "menu_orbes_rein.bat" }
+        "7"  { Ejecutar-Herramienta "scripts_phantom_reintegro" "menu_phantom.ps1" }
+        "8"  { Ejecutar-Herramienta "scripts_orbes_nuevas" "menu_orbes_nuevas.ps1" }
+        "9"  { Ejecutar-Herramienta "scripts_orbe_reintegro" "menu_orbes_rein.ps1" }
         "10" { Ejecutar-Herramienta "configurartvbox_sinapp" "configurar_sinapp.bat" }
         "11" {
             $L = Join-Path $RootPath "lanzador.bat"
@@ -103,3 +109,5 @@ do {
         "0"  { exit }
     }
 } while ($true)
+
+
