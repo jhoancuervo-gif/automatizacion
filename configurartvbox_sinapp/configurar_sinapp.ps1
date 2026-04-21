@@ -2,40 +2,9 @@
 # ESTACIÓN DE TRABAJO - CONFIGURACIÓN ORIGINAL + LIMPIEZA SOMOS
 # ==============================================================================
 
-# ==============================================================================
-# ESTACIÓN DE TRABAJO - CONFIGURACIÓN CON RUTA INTELIGENTE
-# ==============================================================================
-
-# 1. RUTAS AUTOMÁTICAS (Ahora busca en la carpeta actual y en la de arriba)
-# ==============================================================================
-# CONFIGURACIÓN DE RUTAS INTELIGENTES
-# ==============================================================================
+# 1. RUTAS AUTOMÁTICAS
 $scriptDir = $PSScriptRoot
-$adbRelativo = "platform-tools\adb.exe"
-
-# 1. Buscamos en la carpeta actual (por si acaso)
-$pathLocal = Join-Path $scriptDir $adbRelativo
-
-# 2. Buscamos en la carpeta de arriba (La raíz del proyecto CUERVO)
-$parentDir = Split-Path $scriptDir -Parent
-$pathPadre = Join-Path $parentDir $adbRelativo
-
-# 3. Validación de la ruta real
-if (Test-Path $pathLocal) {
-    $adbExe = $pathLocal
-} elseif (Test-Path $pathPadre) {
-    $adbExe = $pathPadre
-} else {
-    Write-Host "❌ ERROR CRÍTICO: No se encontró 'platform-tools\adb.exe'" -ForegroundColor Red
-    Write-Host "Buscado en: $pathLocal" -ForegroundColor Gray
-    Write-Host "Buscado en: $pathPadre" -ForegroundColor Gray
-    Write-Host "`n[!] Asegúrate de que la carpeta 'platform-tools' esté en la raíz de CUERVO." -ForegroundColor Yellow
-    Pause
-    exit
-}
-
-Write-Host "[OK] ADB detectado en: $adbExe" -ForegroundColor Green
-
+$adbExe = Join-Path $scriptDir "platform-tools\adb.exe"
 $ArchivoMAC = Join-Path $scriptDir "tvboxes_configurados.txt"
 $ArchivoBackup = Join-Path $scriptDir "mac_backup.txt"
 $MaxParalelo = 5
