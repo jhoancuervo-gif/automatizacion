@@ -2,9 +2,30 @@
 # ESTACIÓN DE TRABAJO - CONFIGURACIÓN ORIGINAL + LIMPIEZA SOMOS
 # ==============================================================================
 
-# 1. RUTAS AUTOMÁTICAS
+# ==============================================================================
+# ESTACIÓN DE TRABAJO - CONFIGURACIÓN CON RUTA INTELIGENTE
+# ==============================================================================
+
+# 1. RUTAS AUTOMÁTICAS (Ahora busca en la carpeta actual y en la de arriba)
 $scriptDir = $PSScriptRoot
-$adbExe = Join-Path $scriptDir "platform-tools\adb.exe"
+$adbNombre = "platform-tools\adb.exe"
+
+# Intentamos buscarlo en la carpeta del script
+$adbPathLocal = Join-Path $scriptDir $adbNombre
+# Intentamos buscarlo en la carpeta de arriba (Raíz del proyecto)
+$adbPathPadre = Join-Path (Split-Path $scriptDir -Parent) $adbNombre
+
+if (Test-Path $adbPathLocal) {
+    $adbExe = $adbPathLocal
+} elseif (Test-Path $adbPathPadre) {
+    $adbExe = $adbPathPadre
+} else {
+    Write-Host "❌ ERROR: No se encontró platform-tools\adb.exe" -ForegroundColor Red
+    Write-Host "Asegúrate de que la carpeta platform-tools esté en la raíz del proyecto." -ForegroundColor Yellow
+    Pause
+    exit
+}
+
 $ArchivoMAC = Join-Path $scriptDir "tvboxes_configurados.txt"
 $ArchivoBackup = Join-Path $scriptDir "mac_backup.txt"
 $MaxParalelo = 5
