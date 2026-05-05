@@ -41,31 +41,31 @@ function Mostrar-Menu {
     
     Write-Host "  IP: $($script:IP.PadRight(15)) | HOST: $($env:COMPUTERNAME.PadRight(15)) | $Fecha" -ForegroundColor $C
     
-    # --- DISEÑO DEL MENÚ ---
+    # --- DISEÑO DEL MENÚ PREMIUM ---
     Write-Host ""
     Write-Host "  ╔══════════════════════════════════════════════════════════╗" -ForegroundColor $M
-    Write-Host "  ║" -NoNewline -ForegroundColor $M; Write-Host "  🚀  SISTEMA DE AUTOMATIZACIÓN - ESTACIÓN DE TRABAJO     " -NoNewline -ForegroundColor $W; Write-Host "║" -ForegroundColor $M
+    Write-Host "  ║" -NoNewline -ForegroundColor $M; Write-Host "  🚀  SISTEMA DE AUTOMATIZACIÓN - ESTACIÓN PRO            " -NoNewline -ForegroundColor $W; Write-Host "║" -ForegroundColor $M
     Write-Host "  ╠══════════════════════════════════════════════════════════╣" -ForegroundColor $M
     Write-Host "  ║                                                          ║" -ForegroundColor $M
     
-    Write-Host "  ║" -NoNewline -ForegroundColor $M; Write-Host "  [ 📡 POE´S ]                    [ 👻 PHANTOM´S ]        " -NoNewline -ForegroundColor DarkBlue; Write-Host "║" -ForegroundColor $M
+    Write-Host "  ║" -NoNewline -ForegroundColor $M; Write-Host "  [ 📡 POE´S ]                    [ 👻 PHANTOM´S ]        " -NoNewline -ForegroundColor Cyan; Write-Host "║" -ForegroundColor $M
     Write-Host "  ║" -NoNewline -ForegroundColor $M; Write-Host "  1. Switch PoE 1.0 Gb             4. Phantom F2 Reintegro" -NoNewline -ForegroundColor $W; Write-Host "║" -ForegroundColor $M
     Write-Host "  ║" -NoNewline -ForegroundColor $M; Write-Host "  2. Switch PoE 2.5 Gb             5. Phantom F2 (TEST)   " -NoNewline -ForegroundColor $W; Write-Host "║" -ForegroundColor $M
     Write-Host "  ║" -NoNewline -ForegroundColor $M; Write-Host "  3. 🔍 Verificar Puertos          6. Phantom Nuevos      " -NoNewline -ForegroundColor $W; Write-Host "║" -ForegroundColor $M
     Write-Host "  ║" -NoNewline -ForegroundColor $M; Write-Host "                                   7. Phantom Reintegro   " -NoNewline -ForegroundColor $W; Write-Host "║" -ForegroundColor $M
     
     Write-Host "  ║                                                          ║" -ForegroundColor $M
-    Write-Host "  ║" -NoNewline -ForegroundColor $M; Write-Host "  [ 🔍 MONITOREO ]                [ 🔮 ORB´S ]            " -NoNewline -ForegroundColor DarkBlue; Write-Host "║" -ForegroundColor $M
+    Write-Host "  ║" -NoNewline -ForegroundColor $M; Write-Host "  [ 🔍 MONITOREO ]                [ 🔮 ORB´S ]            " -NoNewline -ForegroundColor Cyan; Write-Host "║" -ForegroundColor $M
     Write-Host "  ║" -NoNewline -ForegroundColor $M; Write-Host "  10. 📺 TV BOX                    8. Orbes Nuevas        " -NoNewline -ForegroundColor $W; Write-Host "║" -ForegroundColor $M
     Write-Host "  ║" -NoNewline -ForegroundColor $M; Write-Host "                                   9. Orbes Reintegro     " -NoNewline -ForegroundColor $W; Write-Host "║" -ForegroundColor $M
     
     Write-Host "  ║                                                          ║" -ForegroundColor $M
     Write-Host "  ╠══════════════════════════════════════════════════════════╣" -ForegroundColor $M
     
-    Write-Host "  ║" -NoNewline -ForegroundColor $M; Write-Host "  [ ⚙️ CONFIGURACIÓN ]                                    " -NoNewline -ForegroundColor $W; Write-Host "║" -ForegroundColor $M
-    Write-Host "  ║" -NoNewline -ForegroundColor $M; Write-Host "  11. Instalar Dependencias (Nueva PC)                    " -NoNewline -ForegroundColor $Y; Write-Host "║" -ForegroundColor $M
-    Write-Host "  ║" -NoNewline -ForegroundColor $M; Write-Host "  12.🌐 Cambiar Rango de IPs                              " -NoNewline -ForegroundColor $W; Write-Host "║" -ForegroundColor $M
-    Write-Host "  ║" -NoNewline -ForegroundColor $M; Write-Host "  0. ❌ Salir                                             " -NoNewline -ForegroundColor $W; Write-Host "║" -ForegroundColor $M
+    Write-Host "  ║" -NoNewline -ForegroundColor $M; Write-Host "  [ ⚙️  CONFIGURACIÓN ]                                   " -NoNewline -ForegroundColor $Y; Write-Host "║" -ForegroundColor $M
+    Write-Host "  ║" -NoNewline -ForegroundColor $M; Write-Host "  11. 📦 Instalar Dependencias (Nueva PC)                 " -NoNewline -ForegroundColor $W; Write-Host "║" -ForegroundColor $M
+    Write-Host "  ║" -NoNewline -ForegroundColor $M; Write-Host "  12. 🌐 Cambiar Rango de IPs                             " -NoNewline -ForegroundColor $W; Write-Host "║" -ForegroundColor $M
+    Write-Host "  ║" -NoNewline -ForegroundColor $M; Write-Host "  0.  ❌ Salir                                            " -NoNewline -ForegroundColor $W; Write-Host "║" -ForegroundColor $M
     Write-Host "  ╚══════════════════════════════════════════════════════════╝" -ForegroundColor $M
     Write-Host ""
     Write-Host "  >> Seleccione una opción: " -NoNewline -ForegroundColor $W
@@ -81,7 +81,7 @@ do {
         "2" { Ejecutar-Herramienta "scripts_poe_2_5gb" "iniciarfirmPOE2.5.ps1" }
         "3" { 
             $f = Join-Path $RootPath "check_puerto_poe.ps1"
-            if (Test-Path $f) { & $f } else { Write-Host "Error"; Pause }
+            if (Test-Path $f) { & $f } else { Write-Host "Error: No se encuentra check_puerto_poe.ps1"; Pause }
         }
         "4" { Ejecutar-Herramienta "scripts_phantom_f2_reintegro" "menu_phantomf2.bat" }
         "5" { Ejecutar-Herramienta "scripts_phantom_f2" "menu_phantomf2nuevos.bat" }
@@ -92,7 +92,18 @@ do {
         "10" { Ejecutar-Herramienta "configurartvbox_sinapp" "configurar_sinapp.bat" }
         "11" {
             $L = Join-Path $RootPath "lanzador.bat"
-            if (Test-Path $L) { Start-Process "$L" -Wait } else { Write-Host "No se encuentra lanzador.bat"; Pause }
+            if (Test-Path $L) { 
+                Write-Host "`n  [i] Iniciando instalador... Por favor, acepte los permisos de Administrador." -ForegroundColor Cyan
+                try {
+                    Start-Process cmd.exe -ArgumentList "/c `"$L`"" -Wait -ErrorAction Stop
+                } catch {
+                    Write-Host "`n  [!] Error al abrir el instalador: $($_.Exception.Message)" -ForegroundColor Red
+                    Pause
+                }
+            } else { 
+                Write-Host "`n  [!] ERROR: No se encuentra lanzador.bat en la raíz." -ForegroundColor Red
+                Pause 
+            }
         }
         "12" {
             Write-Host "`n  --- CONFIGURACION DE RANGO ---" -ForegroundColor Cyan
