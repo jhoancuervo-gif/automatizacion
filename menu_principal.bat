@@ -1,15 +1,15 @@
 @echo off
 setlocal
-:: Se posiciona en la carpeta donde esta este archivo
 cd /d "%~dp0"
 title SISTEMA DE AUTOMATIZACION - CUERVO
 
-echo [1/2] Sincronizando con GitHub...
-:: Descarga los cambios. Si no hay internet, saltara al siguiente paso.
+echo [1/3] Sincronizando con GitHub...
 git pull origin main --quiet
 
-echo [2/2] Iniciando interfaz de PowerShell...
-:: Lanza el script de PowerShell actualizado
+echo [2/3] Ejecutando diagnostico de salud...
+powershell -ExecutionPolicy Bypass -File "core\system_doctor.ps1"
+
+echo [3/3] Iniciando interfaz de PowerShell...
 powershell -ExecutionPolicy Bypass -File "menu_principal.ps1"
 
 if %errorlevel% neq 0 (
