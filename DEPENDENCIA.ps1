@@ -12,18 +12,38 @@ try {
     # 1. VERIFICAR PYTHON
     Write-Host "`n[1/6] Verificando Python..." -ForegroundColor Yellow
     $pythonCmd = $null
-    if (Get-Command python -ErrorAction SilentlyContinue) { $pythonCmd = "python" }
-    elseif (Get-Command python3 -ErrorAction SilentlyContinue) { $pythonCmd = "python3" }
-    else { throw "Python no esta instalado o no esta en el PATH." }
-    Write-Host "OK: Python detectado" -ForegroundColor Green
+    
+    # Buscar el ejecutable real ignorando los alias de la tienda si es posible
+    $pythonPath = (Get-Command python.exe -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source -First 1)
+    if (-not $pythonPath) {
+        $pythonPath = (Get-Command python3.exe -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source -First 1)
+    }
+
+    if ($pythonPath) {
+        try {
+            # Verificar si realmente funciona (que no sea el alias de la Windows Store vacío)
+            $ver = & $pythonPath --version 2>&1
+            if ($ver -match "Python") {
+                $pythonCmd = $pythonPath
+                Write-Host "OK: Python detectado en $pythonCmd" -ForegroundColor Green
+            } else {
+                throw "El comando 'python' detectado no es válido o es un alias de la Windows Store."
+            }
+        } catch {
+            throw "Python detectado pero no se puede ejecutar. Por favor, instale Python desde python.org y marque 'Add Python to PATH'."
+        }
+    } else {
+        throw "Python no esta instalado o no esta en el PATH. Descarguelo de python.org"
+    }
 
     # 2. ENTORNO VIRTUAL
     Write-Host "`n[2/6] Verificando entorno virtual..." -ForegroundColor Yellow
-    $venvPath = ".venv"
+    $venvPath = Join-Path $PSScriptRoot ".venv"
     $pythonVenv = Join-Path $venvPath "Scripts\python.exe"
+    
     if (-Not (Test-Path $venvPath)) {
-        Write-Host "Creando entorno virtual..." -ForegroundColor Cyan
-        & $pythonCmd -m venv $venvPath
+        Write-Host "Creando entorno virtual en $venvPath..." -ForegroundColor Cyan
+        & $pythonCmd -m venv "$venvPath"
     }
 
     # 3. INSTALAR DEPENDENCIAS
