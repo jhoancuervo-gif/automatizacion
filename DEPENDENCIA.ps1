@@ -28,7 +28,7 @@ try {
 
     # 3. INSTALAR DEPENDENCIAS
     Write-Host "`n[3/6] Instalando dependencias..." -ForegroundColor Yellow
-    $packages = @("requests", "beautifulsoup4", "asyncssh", "python-dotenv")
+    $packages = @("requests", "beautifulsoup4", "asyncssh", "python-dotenv", "selenium")
     foreach ($pkg in $packages) {
         Write-Host "Instalando $pkg..." -ForegroundColor Cyan
         & $pythonVenv -m pip install $pkg --quiet

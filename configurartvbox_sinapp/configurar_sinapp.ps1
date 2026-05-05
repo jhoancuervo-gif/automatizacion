@@ -1,110 +1,106 @@
 ﻿# ==============================================================================
-# ESTACIÓN DE TRABAJO - CONFIGURACIÓN ORIGINAL + LIMPIEZA SOMOS
+# ESTACIÓN DE TRABAJO - PARALELO TOTAL (FIX DE SINTAXIS)
 # ==============================================================================
 
-# 1. RUTAS AUTOMÁTICAS
 $scriptDir = $PSScriptRoot
 $adbExe = Join-Path $scriptDir "platform-tools\adb.exe"
 $ArchivoMAC = Join-Path $scriptDir "tvboxes_configurados.txt"
 $ArchivoBackup = Join-Path $scriptDir "mac_backup.txt"
-$MaxParalelo = 5
+$CantidadGlobal = 0
 
-# 2. DETECTAR MI IP ACTUAL AUTOMÁTICAMENTE
-$miIP_Detectada = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { 
-    $_.InterfaceAlias -notlike "*Wi-Fi*" -and 
-    $_.InterfaceAlias -notlike "*vEthernet*" -and 
-    $_.IPAddress -like "192.168.10.*"
-} | Select-Object -First 1).IPAddress
-
+$miIP_Detectada = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object {
+        $_.InterfaceAlias -notlike "*Wi-Fi*" -and $_.IPAddress -like "192.168.10.*"
+    } | Select-Object -First 1).IPAddress
 if (-not $miIP_Detectada) { $miIP_Detectada = "0.0.0.0" }
-
-$segmentoBase = "192.168.10."
-$RangoIPs = 200..250
 
 while ($true) {
     Clear-Host
     Write-Host "========================================" -ForegroundColor Magenta
-    Write-Host "   ESTACION - CONFIGURACION FULL " -ForegroundColor Magenta
-    Write-Host "   IP PC: $miIP_Detectada | Rango: ." -ForegroundColor Gray
+    Write-Host "    ESTACION CUERVO - PARALELO FIX     " -ForegroundColor Magenta
+    Write-Host "    IP PC: $miIP_Detectada | Rango: .200-.230" -ForegroundColor Gray
     Write-Host "========================================" -ForegroundColor Magenta
 
-    $Cantidad = 0
-    $inputUser = Read-Host "`n¿Cuántos equipos quieres procesar en este lote?"
-    if (-not [int]::TryParse($inputUser, [ref]$Cantidad)) { $Cantidad = 1 }
+    $inputUser = Read-Host "`n¿Cuántos equipos vas a procesar hoy?"
+    if ($inputUser -as [int]) { $CantidadGlobal = [int]$inputUser } else { $CantidadGlobal = 1 }
 
     & $adbExe kill-server 2>$null
     & $adbExe start-server 2>$null
 
-    # 4. ESCANEO RÁPIDO NMAP
     $tvboxes = @()
-    Write-Host "`n🔍 Buscando $Cantidad equipos..." -ForegroundColor Cyan
-    
+    Write-Host "`n:mag: Buscando $CantidadGlobal equipos..." -ForegroundColor Cyan
+
     do {
         $nmapOut = nmap -p 5555 --open -n -T5 192.168.10.200-230 -oG -
         $ipsEncontradas = $nmapOut | Select-String "Host: (\d+\.\d+\.\d+\.\d+)" | ForEach-Object { $_.Matches.Groups[1].Value } | Where-Object { $_ -ne $miIP_Detectada }
 
         foreach ($ip in $ipsEncontradas) {
-            if ($ip -notin $tvboxes) {
+            if ($ip -notin $tvboxes -and $tvboxes.Count -lt $CantidadGlobal) {
                 $tvboxes += $ip
-                Write-Host "  -> ENCONTRADO: $ip" -ForegroundColor Green
+                Write-Host "  -> ENCONTRADO: $ip ($($tvboxes.Count)/$CantidadGlobal)" -ForegroundColor Green
             }
-            if ($tvboxes.Count -ge $Cantidad) { break }
         }
-        if ($tvboxes.Count -lt $Cantidad) { Start-Sleep -Seconds 1 }
-    } while ($tvboxes.Count -lt $Cantidad)
+        if ($tvboxes.Count -lt $CantidadGlobal) { Start-Sleep -Seconds 1 }
+    } while ($tvboxes.Count -lt $CantidadGlobal)
 
-    # 5. CONFIGURACIÓN Y LIMPIEZA (TUS COMANDOS ORIGINALES)
-    Write-Host "`n🚀 Aplicando configuraciones y limpieza..." -ForegroundColor Cyan
-    $macsFinales = @()
-    
+    Write-Host "`n:rocket: Procesando todos los equipos al tiempo..." -ForegroundColor Cyan
+    $jobs = @()
+
     foreach ($ip in $tvboxes) {
-        $serial = "${ip}:5555"
-        $null = & $adbExe connect $serial
+        $jobs += Start-Job -ScriptBlock {
+            param($ip, $adbExe)
 
-        # Extraer MAC (Prioridad eth0)
-        $m = & $adbExe -s $serial shell "cat /sys/class/net/eth0/address 2>/dev/null || cat /sys/class/net/wlan0/address 2>/dev/null" 2>$null
-        
-        if ($m) {
-            $mac = $m.Trim().ToUpper()
-            $macsFinales += $mac
-            
-            # --- TUS COMANDOS ORIGINALES DE CONFIGURACION ---
-            # 1. Idioma y zona (persist)
-            & $adbExe -s $serial shell "setprop persist.sys.language es" 2>$null
-            & $adbExe -s $serial shell "setprop persist.sys.country US" 2>$null
-            & $adbExe -s $serial shell "setprop persist.sys.timezone America/Bogota" 2>$null
-            
-            # 2. Configuracion adicional de idioma
-            & $adbExe -s $serial shell "settings put system system_locales es-US" 2>$null
-            
-            # --- LIMPIEZA DE APP SOMOS ---
-            $pkgs = & $adbExe -s $serial shell "pm list packages | grep somos" 2>$null
-            if ($pkgs) {
-                foreach ($line in $pkgs) {
-                    $AppID = $line.Replace("package:", "").Trim()
-                    if ($AppID) {
-                        & $adbExe -s $serial shell "am force-stop $AppID; pm clear $AppID; pm uninstall --user 0 $AppID" >$null 2>&1
+            # Conexión inicial
+            & $adbExe connect "${ip}:5555" | Out-Null
+
+            # 1. Obtener MAC
+            $m = & $adbExe -s "${ip}:5555" shell "cat /sys/class/net/eth0/address 2>/dev/null || cat /sys/class/net/wlan0/address 2>/dev/null"
+
+            if ($m) {
+                $mac = $m.Trim().ToUpper()
+
+                # 2. Configuración Regional (Comandos individuales para evitar errores de comillas)
+                & $adbExe -s "${ip}:5555" shell "setprop persist.sys.language es"
+                & $adbExe -s "${ip}:5555" shell "setprop persist.sys.country US"
+                & $adbExe -s "${ip}:5555" shell "setprop persist.sys.timezone America/Bogota"
+                & $adbExe -s "${ip}:5555" shell "settings put system system_locales es-US"
+
+                # 3. Limpieza de APP SOMOS
+                $pkgs = & $adbExe -s "${ip}:5555" shell "pm list packages | grep somos"
+                if ($pkgs) {
+                    foreach ($line in $pkgs) {
+                        $AppID = $line.Replace("package:", "").Trim()
+                        if ($AppID) {
+                            & $adbExe -s "${ip}:5555" shell "pm uninstall --user 0 $AppID"
+                        }
                     }
                 }
-            }
 
-            # --- DESACTIVAR WIFI (TUS COMANDOS ORIGINALES) ---
-            & $adbExe -s $serial shell "svc wifi disable" 2>$null
-            & $adbExe -s $serial shell "settings put global wifi_on 0" 2>$null
-            & $adbExe -s $serial shell "settings put global wifi_scan_always_enabled 0" 2>$null
-            
-            Start-Sleep -Milliseconds 500
-            
-            # --- REINICIAR ---
-            & $adbExe -s $serial shell "reboot" 2>$null
-            Write-Host "  [OK] $ip - $mac (Configurado)" -ForegroundColor Green
+                # 4. WiFi OFF y Reboot
+                & $adbExe -s "${ip}:5555" shell "svc wifi disable"
+                & $adbExe -s "${ip}:5555" shell "settings put global wifi_on 0"
+                & $adbExe -s "${ip}:5555" shell "reboot"
+
+                return "$ip|$mac"
+            }
+        } -ArgumentList $ip, $adbExe
+    }
+
+    Write-Host ":hourglass_flowing_sand: Trabajando en segundo plano... espera un momento." -ForegroundColor Yellow
+    $resultados = $jobs | Wait-Job | Receive-Job
+    $jobs | Remove-Job
+
+    $macsFinales = @()
+    foreach ($linea in $resultados) {
+        if ($linea -match "\|") {
+            $data = $linea.Split("|")
+            $macsFinales += $data[1]
+            Write-Host "  [OK] $($data[0]) -> $($data[1])" -ForegroundColor Green
         }
     }
 
-    # 6. REPORTE Y FINALIZACIÓN
     $macsFinales | Out-File -FilePath $ArchivoMAC -Encoding UTF8
     $macsFinales | ForEach-Object { "$(Get-Date -Format 'HH:mm') | $_" } | Out-File -FilePath $ArchivoBackup -Append
-    
+
     Write-Host "`n[LISTO] Reporte generado." -ForegroundColor Green
     Start-Process notepad.exe $ArchivoMAC
     [System.Console]::Beep(523, 200)
