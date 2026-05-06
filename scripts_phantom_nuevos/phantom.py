@@ -27,7 +27,7 @@ class Config:
     SSH_USERNAME = "root"
     SSH_PASSWORD = ""
 
-    FIRMWARE_PATH = "FIRMWARE-24.10.3-PHANTOM.bin"
+    FIRMWARE_PATH = "Firmware_PHANTOM.bin"
     FIRMWARE_VERSION = "24.10.3-PHANTOM"
     REMOTE_PATH = "/tmp/"
 
