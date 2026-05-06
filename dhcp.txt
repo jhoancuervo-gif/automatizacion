@@ -5,7 +5,7 @@ set [ find default=yes ] supplicant-identity=MikroTik
 /ip hotspot profile
 set [ find default=yes ] html-directory=hotspot
 /ip pool
-add name=dhcp_pool24 ranges=192.168.10.200-192.168.10.214
+add name=dhcp_pool24 ranges=192.168.10.200-192.168.10.224
 /ip dhcp-server
 add address-pool=dhcp_pool24 always-broadcast=yes interface=bridge1 \
     lease-time=30s name=dhcp1
