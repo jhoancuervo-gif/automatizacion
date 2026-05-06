@@ -18,6 +18,7 @@ PARENT_DIR = os.path.dirname(SCRIPT_DIR)
 
 # Buscar macs.txt en la carpeta padre - RUTA ABSOLUTA
 MAC_FILE_PATH = os.path.join(PARENT_DIR, "macs.txt")
+RESULTS_FILE_PATH = os.path.join(PARENT_DIR, "resultados_eliminacion.txt")
 
 USERNAME = os.getenv("ISP_USERNAME")
 PASSWORD = os.getenv("ISP_PASSWORD")
@@ -86,8 +87,6 @@ def read_and_clean_macs():
                         seen.add(mac)
                         unique_macs.append(mac)
 
-        print(f"📦 Backup creado: {MAC_FILE_PATH}.backup.{int(time.time())}")
-        shutil.copy(MAC_FILE_PATH, f"{MAC_FILE_PATH}.backup.{int(time.time())}")
         print(f"📄 Archivo MACs encontrado: {MAC_FILE_PATH}")
         print(f"📊 Total MACs únicas a procesar: {len(unique_macs)}")
 
@@ -383,10 +382,11 @@ def main():
 
     # Guardar resultados
     try:
-        with open(MAC_FILE_PATH, 'w', encoding='utf-8') as file:
+        with open(RESULTS_FILE_PATH, 'w', encoding='utf-8') as file:
             file.write("=" * 60 + "\n")
             file.write("RESULTADOS DEL PROCESO DE ELIMINACIÓN\n")
             file.write("=" * 60 + "\n\n")
+            file.write(f"Fecha: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
             file.write(f"Total MACs procesadas: {len(macs)}\n")
             file.write(f"✅ Eliminadas: {deleted_count}\n")
             file.write(f"❌ Errores: {error_count}\n")
@@ -396,13 +396,7 @@ def main():
             for line in updated_lines:
                 file.write(line + "\n")
 
-            file.write("\n" + "=" * 60 + "\n")
-            file.write("LISTADO ORIGINAL DE MACS\n")
-            file.write("=" * 60 + "\n")
-            for mac in macs:
-                file.write(mac + "\n")
-
-        print(f"\n💾 Resultados guardados en {MAC_FILE_PATH}")
+        print(f"\n💾 Resultados guardados en {RESULTS_FILE_PATH}")
         print(f"\n📊 RESUMEN:")
         print(f"   Total procesadas: {len(macs)}")
         print(f"   ✅ Eliminadas: {deleted_count}")
