@@ -7,5 +7,5 @@ echo.
 echo ==========================================
 echo    ACTUALIZACION EXITOSA (MODO FORZADO)
 echo ==========================================
-echo Ya deberias ver la opcion 8. TVBOX.
+echo Ya cuentas con el script actualizado.
 pause
