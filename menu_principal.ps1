@@ -19,11 +19,13 @@ function Ejecutar-Herramienta {
         Push-Location $Path
         if ($ScriptName.EndsWith(".bat")) {
             cmd.exe /c $ScriptName
-        } elseif ($ScriptName.EndsWith(".ps1")) {
+        }
+        elseif ($ScriptName.EndsWith(".ps1")) {
             & .\$ScriptName
         }
         Pop-Location
-    } else { 
+    }
+    else { 
         Write-Host "`n  [!] ERROR: Carpeta '$SubDir' no encontrada." -ForegroundColor Red
         Pause 
     }
@@ -40,7 +42,7 @@ function Mostrar-Menu {
     Write-Host "  IP: $($script:IP.PadRight(15)) | HOST: $($env:COMPUTERNAME.PadRight(15)) | $Fecha" -ForegroundColor $C
     
     # --- DISEÑO DEL MENÚ ---
-	Write-Host ""
+    Write-Host ""
     Write-Host "  ╔══════════════════════════════════════════════════════════╗" -ForegroundColor $M
     Write-Host "  ║" -NoNewline -ForegroundColor $M; Write-Host "  🚀  SISTEMA DE AUTOMATIZACIÓN - ESTACIÓN DE TRABAJO     " -NoNewline -ForegroundColor $W; Write-Host "║" -ForegroundColor $M
     Write-Host "  ╠══════════════════════════════════════════════════════════╣" -ForegroundColor $M
@@ -62,7 +64,7 @@ function Mostrar-Menu {
     
     Write-Host "  ║" -NoNewline -ForegroundColor $M; Write-Host "  [ ⚙️ CONFIGURACIÓN ]                                    " -NoNewline -ForegroundColor $W; Write-Host "║" -ForegroundColor $M
     Write-Host "  ║" -NoNewline -ForegroundColor $M; Write-Host "  11. Instalar Dependencias (Nueva PC)                    " -NoNewline -ForegroundColor $Y; Write-Host "║" -ForegroundColor $M
-    Write-Host "  ║" -NoNewline -ForegroundColor $M; Write-Host "  12.🌐 Cambiar Rango de IPs                              " -NoNewline -ForegroundColor $W; Write-Host "║" -ForegroundColor $M
+    Write-Host "  ║" -NoNewline -ForegroundColor $M; Write-Host "  12.🌐 Cambiar Rango de IPs (No es necesario)            " -NoNewline -ForegroundColor $W; Write-Host "║" -ForegroundColor $M
     Write-Host "  ║" -NoNewline -ForegroundColor $M; Write-Host "  0. ❌ Salir                                             " -NoNewline -ForegroundColor $W; Write-Host "║" -ForegroundColor $M
     Write-Host "  ╚══════════════════════════════════════════════════════════╝" -ForegroundColor $M
     Write-Host ""
@@ -75,18 +77,18 @@ do {
     $opcion = Read-Host
 
     switch ($opcion) {
-        "1"  { Ejecutar-Herramienta "scripts_poe_1gb" "iniciarfirmPOE.ps1" }
-        "2"  { Ejecutar-Herramienta "scripts_poe_2_5gb" "iniciarfirmPOE2.5.ps1" }
-        "3"  { 
+        "1" { Ejecutar-Herramienta "scripts_poe_1gb" "iniciarfirmPOE.ps1" }
+        "2" { Ejecutar-Herramienta "scripts_poe_2_5gb" "iniciarfirmPOE2.5.ps1" }
+        "3" { 
             $f = Join-Path $RootPath "check_puerto_poe.ps1"
             if (Test-Path $f) { & $f } else { Write-Host "Error"; Pause }
         }
-        "4"  { Ejecutar-Herramienta "scripts_phantom_f2_reintegro" "menu_phantomf2.bat" }
-        "5"  { Ejecutar-Herramienta "scripts_phantom_f2" "menu_phantomf2nuevos.bat" }
-        "6"  { Ejecutar-Herramienta "scripts_phantom_nuevos" "menu_phantom_nuevos.bat" }
-        "7"  { Ejecutar-Herramienta "scripts_phantom_reintegro" "menu_phantom.ps1" }
-        "8"  { Ejecutar-Herramienta "scripts_orbes_nuevas" "menu_orbes_nuevas.ps1" }
-        "9"  { Ejecutar-Herramienta "scripts_orbe_reintegro" "menu_orbes_rein.ps1" }
+        "4" { Ejecutar-Herramienta "scripts_phantom_f2_reintegro" "menu_phantomf2.bat" }
+        "5" { Ejecutar-Herramienta "scripts_phantom_f2" "menu_phantomf2nuevos.bat" }
+        "6" { Ejecutar-Herramienta "scripts_phantom_nuevos" "menu_phantom_nuevos.bat" }
+        "7" { Ejecutar-Herramienta "scripts_phantom_reintegro" "menu_phantom.ps1" }
+        "8" { Ejecutar-Herramienta "scripts_orbes_nuevas" "menu_orbes_nuevas.ps1" }
+        "9" { Ejecutar-Herramienta "scripts_orbe_reintegro" "menu_orbes_rein.ps1" }
         "10" { Ejecutar-Herramienta "configurartvbox_sinapp" "configurar_sinapp.bat" }
         "11" {
             $L = Join-Path $RootPath "lanzador.bat"
@@ -106,7 +108,7 @@ do {
             }
             Pause
         }
-        "0"  { exit }
+        "0" { exit }
     }
 } while ($true)
 
