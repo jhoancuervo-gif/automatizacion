@@ -3,8 +3,38 @@ import asyncio
 import asyncssh
 import os
 import re
+import socket
 from datetime import datetime
 from config import Config
+
+def get_local_ip():
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except:
+        return "127.0.0.1"
+
+async def scan_active_ips(target_range):
+    """
+    Usa Nmap para encontrar equipos vivos rápidamente.
+    """
+    # -sn: Ping scan
+    cmd = f"nmap -sn --min-parallelism 100 --max-rtt-timeout 150ms {target_range} -oG -"
+    try:
+        process = await asyncio.create_subprocess_shell(
+            cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        stdout, _ = await process.communicate()
+        if process.returncode == 0:
+            return re.findall(r"Host: (\d+\.\d+\.\d+\.\d+)", stdout.decode())
+    except Exception:
+        pass
+    return []
 
 async def process_orbe(ip):
     try:
@@ -39,23 +69,27 @@ async def process_orbe(ip):
             print(f" -> 📤 Subiendo...", end="", flush=True)
             await asyncssh.scp(str(Config.FIRMWARE_PATH), (conn, '/tmp/somosORB2-PROD.bin'))
 
-            # --- LÓGICA DE GUARDADO Y BACKUP (Estilo POE) ---
-            # 1. Guardar en macs.txt de la raíz
+            # --- LÓGICA DE GUARDADO Y BACKUP ---
             with open(Config.MAC_FILE, 'a', encoding='utf-8') as f:
                 f.write(f"{mac}\n")
             
-            # 2. Guardar en el Historial de Backup
             fecha = datetime.now().strftime("%Y-%m-%d")
             hora = datetime.now().strftime("%H:%M:%S")
             historial_path = Config.BACKUP_DIR / f"orbe_reintegro_historial_{fecha}.txt"
+            
+            if not Config.BACKUP_DIR.exists():
+                Config.BACKUP_DIR.mkdir(parents=True)
+
             with open(historial_path, 'a', encoding='utf-8') as f:
                 f.write(f"{hora} | Orbe Reintegro | {mac}\n")
             
-            # Flashear
+            # Flashear (Mantenemos tu lógica original exacta)
             print(f" -> 🚀 Flasheando...", end="", flush=True)
             try:
+                # Quitamos el & y dejamos que el comando se ejecute como en tu original
                 await conn.run("sysupgrade -n -F /tmp/somosORB2-PROD.bin")
-            except: pass
+            except: 
+                pass
                 
             return True, mac
 
@@ -63,38 +97,68 @@ async def process_orbe(ip):
         return False, f"SSH_ERROR ({str(e)[:15]})"
 
 async def main():
-    print(f"\n🚀 ORBE REINTEGRO - MODO LIMPIEZA Y BACKUP")
-    print(f"📡 Rango: {Config.IP_BASE}{Config.IP_START} al {Config.IP_BASE}{Config.IP_END}")
+    print(f"\n🚀 ORBE REINTEGRO - MODO NMAP EFICIENTE")
     
-    # IMPORTANTE: Limpiamos macs.txt de la raíz al iniciar
+    mi_ip = get_local_ip()
+    gateway_ip = f"{Config.IP_BASE}1"
+    target_range = f"{Config.IP_BASE}0/24" 
+    
+    # Limpiar macs.txt de la raíz al iniciar
     if Config.MAC_FILE.exists():
         open(Config.MAC_FILE, 'w').close()
     else:
-        open(Config.MAC_FILE, 'w').close()
+        Config.MAC_FILE.touch()
 
-    ips = [f"{Config.IP_BASE}{i}" for i in range(Config.IP_START, Config.IP_END + 1)]
-    input(f"\n[!] Presione ENTER para iniciar proceso en {len(ips)} equipos...")
+    try:
+        input_user = input("\n¿Cuántos equipos quieres procesar en este lote? (Default 1): ")
+        objetivo = int(input_user) if input_user.strip() else 1
+    except ValueError:
+        objetivo = 1
+
+    print(f"🔍 Escaneando red para encontrar {objetivo} equipos activos...")
     
-    for ip in ips:
-        print(f"📡 {ip}", end="", flush=True)
-        exito, resultado = await process_orbe(ip)
-        if exito:
-            print(f" ✅ TERMINADO")
-        else:
-            print(f" ❌ FALLÓ: {resultado}")
+    procesados_exitosos = 0
+    ya_intentados = {mi_ip, gateway_ip}
+    
+    while procesados_exitosos < objetivo:
+        # Escaneo rápido con Nmap
+        activas = await scan_active_ips(target_range)
+        
+        # Filtrar IPs que no hemos tocado
+        candidatas = [ip for ip in activas if ip not in ya_intentados]
+        
+        if not candidatas:
+            print(".", end="", flush=True)
+            await asyncio.sleep(2)
+            continue
 
-# --- BLOQUE DE RETORNO SEGURO ---
+        for ip in candidatas:
+            if procesados_exitosos >= objetivo:
+                break
+                
+            print(f"📡 {ip}", end="", flush=True)
+            exito, resultado = await process_orbe(ip)
+            
+            ya_intentados.add(ip)
+            
+            if exito:
+                procesados_exitosos += 1
+                print(f" ✅ TERMINADO")
+            else:
+                print(f" ❌ FALLÓ: {resultado}")
+
+        if procesados_exitosos < objetivo:
+            print(f"\n⏳ Llevamos {procesados_exitosos}/{objetivo}. Re-escaneando red...")
+
+    print(f"\n\n✨ Proceso finalizado. {procesados_exitosos} equipos completados.")
+
 if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        print("\n⚠️ Proceso cancelado por el usuario.")
-    except Exception as e:
-        print(f"\n❌ Ocurrió un error inesperado: {e}")
+        print("\n⚠️ Proceso cancelado.")
     finally:
         if Config.MAC_FILE.exists() and os.path.getsize(Config.MAC_FILE) > 0:
-            print("\n[+] Abriendo reporte de MACs en el Bloc de notas...")
             try: os.startfile(Config.MAC_FILE)
             except: pass
-        
-        input("\n[🔔] Presione ENTER para volver al menú principal...")
+        input("\n[🔔] Presione ENTER para salir...")
