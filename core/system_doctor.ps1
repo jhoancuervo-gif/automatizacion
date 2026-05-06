@@ -5,7 +5,7 @@ $ErrorActionPreference = "SilentlyContinue"
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
 function Check-Health {
-    Write-Host "`n  [🔍] INICIANDO DIAGNOSTICO DE SISTEMA..." -ForegroundColor Cyan
+    Write-Host "`n  [CHECK] INICIANDO DIAGNOSTICO DE SISTEMA..." -ForegroundColor Cyan
     Write-Host "  --------------------------------------------------" -ForegroundColor Gray
     $allOk = $true
 
@@ -13,7 +13,8 @@ function Check-Health {
     Write-Host "  [1/5] Verificando conexion a Internet... " -NoNewline
     if (Test-Connection -ComputerName google.com -Count 1 -Quiet) {
         Write-Host "OK" -ForegroundColor Green
-    } else {
+    }
+    else {
         Write-Host "FALLO" -ForegroundColor Red
         Write-Host "        (Verifica tu conexion para poder sincronizar GitHub y el Portal)" -ForegroundColor Gray
         $allOk = $false
@@ -23,10 +24,12 @@ function Check-Health {
     $tools = @("python", "git", "nmap")
     Write-Host "  [2/5] Verificando herramientas instaladas..."
     foreach ($tool in $tools) {
-        Write-Host "        - $tool: " -NoNewline
+        Write-Host "        - $tool" -NoNewline
+        Write-Host ": " -NoNewline
         if (Get-Command $tool -ErrorAction SilentlyContinue) {
             Write-Host "INSTALADO" -ForegroundColor Green
-        } else {
+        }
+        else {
             Write-Host "NO ENCONTRADO" -ForegroundColor Red
             $allOk = $false
         }
@@ -36,15 +39,17 @@ function Check-Health {
     Write-Host "  [3/5] Verificando configuracion (.env)... " -NoNewline
     $envPath = Join-Path $PSScriptRoot "..\.env"
     if (Test-Path $envPath) {
-        $content = Get-Content $envPath
+        $content = Get-Content $envPath -Raw
         if ($content -match "ISP_USERNAME=" -and $content -match "ISP_PASSWORD=") {
             Write-Host "OK" -ForegroundColor Green
-        } else {
+        }
+        else {
             Write-Host "INCOMPLETO" -ForegroundColor Yellow
             Write-Host "        (Faltan credenciales del Portal ISP)" -ForegroundColor Gray
             $allOk = $false
         }
-    } else {
+    }
+    else {
         Write-Host "NO EXISTE" -ForegroundColor Red
         $allOk = $false
     }
@@ -54,7 +59,8 @@ function Check-Health {
     $venvPath = Join-Path $PSScriptRoot "..\.venv"
     if (Test-Path $venvPath) {
         Write-Host "OK" -ForegroundColor Green
-    } else {
+    }
+    else {
         Write-Host "NO ENCONTRADO" -ForegroundColor Yellow
         Write-Host "        (Ejecute la opcion 11 del menu principal para crearlo)" -ForegroundColor Gray
         $allOk = $false
@@ -65,16 +71,18 @@ function Check-Health {
     $backupPath = Join-Path $PSScriptRoot "..\backups_macs"
     if (Test-Path $backupPath) {
         Write-Host "OK" -ForegroundColor Green
-    } else {
+    }
+    else {
         New-Item -ItemType Directory -Path $backupPath | Out-Null
         Write-Host "CREADA" -ForegroundColor Green
     }
 
     Write-Host "  --------------------------------------------------" -ForegroundColor Gray
     if ($allOk) {
-        Write-Host "  [✔] SISTEMA SALUDABLE. LISTO PARA OPERAR." -ForegroundColor Green
+        Write-Host "  [OK] SISTEMA SALUDABLE. LISTO PARA OPERAR." -ForegroundColor Green
         Start-Sleep -Seconds 1
-    } else {
+    }
+    else {
         Write-Host "  [!] SE DETECTARON ADVERTENCIAS O ERRORES." -ForegroundColor Yellow
         Write-Host "      Revise los puntos marcados en rojo antes de continuar." -ForegroundColor Gray
         Pause
