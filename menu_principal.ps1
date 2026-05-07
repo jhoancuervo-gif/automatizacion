@@ -23,17 +23,33 @@ $PC = "$([char]0xD83D)$([char]0xDCBB)"; $Cal = "$([char]0xD83D)$([char]0xDCC5)"
 # Cachear IP una sola vez al cargar la aplicacion
 $script:IP = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.InterfaceAlias -like "*Ethernet*" -or $_.InterfaceAlias -like "*Wi-Fi*" } | Select-Object -First 1).IPAddress
 
+# --- DEFINICION DE NOMBRE VISUAL (MAPEO) ---
+$EquipoMapeo = @{
+    "MPC-1OCAK8IK9CP" = "Rey"
+    "DESKTOP-PT8UMBI" = "Cuervonv"
+    "ALVARO"          = "Alvaro"
+    "DESKTOP-4D3P5N2" = "Esteban"
+    "MPC-17KT4458H7R" = "Kevin"
+    "DESKTOP-7D3G6V0" = "Felipe"
+    
+    # Agrega más mapeos aquí
+}
+$script:NombreVisual = $env:COMPUTERNAME
+if ($EquipoMapeo.ContainsKey($env:COMPUTERNAME)) {
+    $script:NombreVisual = $EquipoMapeo[$env:COMPUTERNAME]
+}
+
 # --- NOTIFICACION DE INICIO (DISCORD WEBHOOK) ---
 try {
     $WebhookURL = "https://discord.com/api/webhooks/1501650686700425389/Vovrg4DTz1WBb3yzzyn2h8xsiCNIWIia33P7ANR-3q_WMahR8LwqfftdeUIXi7VrSAMy"
     $Payload = @{
         embeds = @(
             @{
-                title = "$Rocket Estacion de Trabajo Activa"
-                color = 5814783
+                title  = "$Rocket Estacion de Trabajo Activa"
+                color  = 5814783
                 fields = @(
                     @{ name = "$User Usuario"; value = "**$env:USERNAME**"; inline = $true }
-                    @{ name = "$PC Equipo"; value = "**$env:COMPUTERNAME**"; inline = $true }
+                    @{ name = "$PC Equipo"; value = "**$script:NombreVisual**"; inline = $true }
                     @{ name = "$Globe IP Local"; value = "$($script:IP)"; inline = $true }
                     @{ name = "$Cal Fecha y Hora"; value = (Get-Date -Format "dd/MM/yyyy HH:mm:ss"); inline = $false }
                 )
@@ -42,7 +58,8 @@ try {
         )
     } | ConvertTo-Json -Depth 10
     Invoke-RestMethod -Uri $WebhookURL -Method Post -Body $Payload -ContentType 'application/json' -ErrorAction SilentlyContinue
-} catch { }
+}
+catch { }
 
 function Ejecutar-Herramienta {
     param([string]$SubDir, [string]$ScriptName)
@@ -52,7 +69,8 @@ function Ejecutar-Herramienta {
         if ($ScriptName.EndsWith(".bat")) { cmd.exe /c $ScriptName }
         elseif ($ScriptName.EndsWith(".ps1")) { & .\$ScriptName }
         Pop-Location
-    } else { 
+    }
+    else { 
         Write-Host "`n  [!] ERROR: Carpeta '$SubDir' no encontrada." -ForegroundColor Red
         Pause 
     }
@@ -62,7 +80,7 @@ function Mostrar-Menu {
     Clear-Host
     $M = "Magenta"; $W = "White"; $C = "Cyan"; $Y = "Yellow"; $B = "DarkBlue"
     $Fecha = Get-Date -Format "HH:mm:ss"
-    Write-Host "  IP: $($script:IP.PadRight(15)) | HOST: $($env:COMPUTERNAME.PadRight(15)) | $Fecha" -ForegroundColor $C
+    Write-Host "  IP: $($script:IP.PadRight(15)) | HOST: $($script:NombreVisual.PadRight(15)) | $Fecha" -ForegroundColor $C
     Write-Host ""
     
     # RENDERIZADO PIXEL-PERFECT
@@ -81,7 +99,7 @@ function Mostrar-Menu {
     Write-Host "  $V" -NoNewline -ForegroundColor $M; Write-Host "                                   9. Orbes Reintegro     " -NoNewline -ForegroundColor $W; Write-Host "$V" -ForegroundColor $M
     Write-Host "  $V                                                          $V" -ForegroundColor $M
     Write-Host "  $ML$H_Line$MR" -ForegroundColor $M
-    Write-Host "  $V" -NoNewline -ForegroundColor $M; Write-Host "  [ $Gear CONFIGURACION ]                                    " -NoNewline -ForegroundColor $W; Write-Host "$V" -ForegroundColor $M
+    Write-Host "  $V" -NoNewline -ForegroundColor $M; Write-Host "  [ $Gear CONFIGURACION ]                                     " -NoNewline -ForegroundColor $W; Write-Host "$V" -ForegroundColor $M
     Write-Host "  $V" -NoNewline -ForegroundColor $M; Write-Host "  11. Instalar Dependencias (Nueva PC)                    " -NoNewline -ForegroundColor $Y; Write-Host "$V" -ForegroundColor $M
     Write-Host "  $V" -NoNewline -ForegroundColor $M; Write-Host "  12.$Globe Cambiar Rango de IPs (No es necesario)            " -NoNewline -ForegroundColor $W; Write-Host "$V" -ForegroundColor $M
     Write-Host "  $V" -NoNewline -ForegroundColor $M; Write-Host "  0. $Exit Salir                                             " -NoNewline -ForegroundColor $W; Write-Host "$V" -ForegroundColor $M
