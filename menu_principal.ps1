@@ -32,6 +32,7 @@ $EquipoMapeo = @{
     "MPC-17KT4458H7R" = "Kevin"
     "DESKTOP-7D3G6V0" = "Felipe"
     "DESKTOP-R1IDN86" = "Paula Andrea"
+    "MPC-71225UVI7HG" = "Bryan"
     
     # Agrega más mapeos aquí
 }
