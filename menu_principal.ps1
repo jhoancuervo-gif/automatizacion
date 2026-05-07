@@ -19,6 +19,7 @@ $Orb = "$([char]0xD83D)$([char]0xDD2E)"; $TV = "$([char]0xD83D)$([char]0xDCFA)"
 $Gear = "$([char]0x2699)"; $Globe = "$([char]0xD83C)$([char]0xDF10)"
 $Exit = "$([char]0x274C)"; $User = "$([char]0xD83D)$([char]0xDC64)"
 $PC = "$([char]0xD83D)$([char]0xDCBB)"; $Cal = "$([char]0xD83D)$([char]0xDCC5)"
+$Wrench = "$([char]0xD83D)$([char]0xDD27)"
 
 # Cachear IP una sola vez al cargar la aplicacion
 $script:IP = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.InterfaceAlias -like "*Ethernet*" -or $_.InterfaceAlias -like "*Wi-Fi*" } | Select-Object -First 1).IPAddress
@@ -104,6 +105,7 @@ function Mostrar-Menu {
     Write-Host "  $V" -NoNewline -ForegroundColor $M; Write-Host "  [ $Gear CONFIGURACION ]                                     " -NoNewline -ForegroundColor $W; Write-Host "$V" -ForegroundColor $M
     Write-Host "  $V" -NoNewline -ForegroundColor $M; Write-Host "  11. Instalar Dependencias (Nueva PC)                    " -NoNewline -ForegroundColor $Y; Write-Host "$V" -ForegroundColor $M
     Write-Host "  $V" -NoNewline -ForegroundColor $M; Write-Host "  12.$Globe Cambiar Rango de IPs (No es necesario)            " -NoNewline -ForegroundColor $W; Write-Host "$V" -ForegroundColor $M
+    Write-Host "  $V" -NoNewline -ForegroundColor $M; Write-Host "  13.$Wrench Reparar Red / Reset Stack (netsh)                 " -NoNewline -ForegroundColor $C; Write-Host "$V" -ForegroundColor $M
     Write-Host "  $V" -NoNewline -ForegroundColor $M; Write-Host "  0. $Exit Salir                                             " -NoNewline -ForegroundColor $W; Write-Host "$V" -ForegroundColor $M
     Write-Host "  $BL$H_Line$BR" -ForegroundColor $M
     Write-Host ""
@@ -138,6 +140,7 @@ do {
             }
             Pause
         }
+        "13" { $R = Join-Path $RootPath "core\reparar_red.ps1"; if (Test-Path $R) { & $R } else { Write-Host "Error"; Pause } }
         "0" { exit }
     }
 } while ($true)
