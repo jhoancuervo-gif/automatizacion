@@ -18,7 +18,7 @@ Write-Host ""
 Write-Host "  Opciones disponibles:" -ForegroundColor Cyan
 Write-Host "  1. Limpieza Rapida (ARP, DNS, Cache)" -ForegroundColor White
 Write-Host "  2. Reset Profundo (Winsock, Stack IP) - Requiere Reinicio" -ForegroundColor White
-Write-Host "  3. Diagnostico de Conexion (Ping 192.168.1.1)" -ForegroundColor White
+Write-Host "  3. Diagnostico de Conexion (Ping 192.168.1.1 / 10.1)" -ForegroundColor White
 Write-Host "  0. Volver al Menu Principal" -ForegroundColor White
 Write-Host ""
 
@@ -64,17 +64,19 @@ switch ($opcion) {
     }
     "3" {
         Show-Header
-        $TargetIP = "192.168.1.1"
-        Write-Host "  [*] Verificando conexion con $TargetIP..." -ForegroundColor Cyan
-        if (Test-Connection -ComputerName $TargetIP -Count 2 -Quiet) {
-            Write-Host "  [+] EXITOSO: El equipo responde al ping." -ForegroundColor Green
-        } else {
-            Write-Host "  [-] FALLIDO: No hay respuesta de $TargetIP." -ForegroundColor Red
-            Write-Host "`n  [!] SUGERENCIA:" -ForegroundColor Yellow
-            Write-Host "  1. Verifique que su IP fija este en el rango 192.168.1.X (ej: 192.168.1.10)"
-            Write-Host "  2. Asegurese de que el cable este conectado."
-            Write-Host "  3. Intente la Opcion 1 (Limpieza Rapida) para borrar el cache ARP."
+        $TargetIPs = @("192.168.1.1", "192.168.10.1")
+        foreach ($IP in $TargetIPs) {
+            Write-Host "`n  [*] Verificando conexion con $IP..." -ForegroundColor Cyan
+            if (Test-Connection -ComputerName $IP -Count 2 -Quiet) {
+                Write-Host "  [+] EXITOSO: El equipo ($IP) responde al ping." -ForegroundColor Green
+            } else {
+                Write-Host "  [-] FALLIDO: No hay respuesta de $IP." -ForegroundColor Red
+            }
         }
+        Write-Host "`n  [!] SUGERENCIA:" -ForegroundColor Yellow
+        Write-Host "  1. Verifique su IP fija (Rango 1.X o 10.X)."
+        Write-Host "  2. Asegurese de que el cable este conectado."
+        Write-Host "  3. Intente la Opcion 1 (Limpieza Rapida) para borrar el cache ARP."
         Pause
     }
     "0" { return }

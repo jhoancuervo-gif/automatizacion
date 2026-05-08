@@ -25,10 +25,10 @@ class Config:
     
     # Configuración de dispositivo
     SSH_PASSWORD = os.getenv("SSH_PASSWORD", "M7h$)Fw3|;63*h?ET")
-    DEVICE_IP = os.getenv("DEVICE_IP", "192.168.1.1")
+    DEVICE_IP = os.getenv("F2_DEVICE_IP", "192.168.10.1")
     
     # Firmware local
-    FIRMWARE_PATH = CURRENT_DIR / "Firmware_PHANTOM-F2.bin"
+    FIRMWARE_PATH = CURRENT_DIR / "somos-openwrt-24.10.5-somosfw-mediatek-filogic-somos_phantomf2.bin"
 
 class PortalConfig:
     """Configuración del Portal ISP"""

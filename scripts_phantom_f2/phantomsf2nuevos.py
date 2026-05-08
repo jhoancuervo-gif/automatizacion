@@ -13,16 +13,20 @@ sesion_actual = []
 
 async def process_device(ip, retries=3):
     """Procesa el equipo con lógica de reintentos"""
+    if not Config.FIRMWARE_PATH.exists():
+        print(f"❌ ERROR: No se encuentra el firmware en {Config.FIRMWARE_PATH}")
+        return "ERROR_LOCAL", None
+
     for intento in range(1, retries + 1):
         try:
             options = asyncssh.SSHClientConnectionOptions(
                 known_hosts=None,
-                login_timeout=8,  # Tiempo de espera por intento
+                login_timeout=8,
                 signature_algs=['ssh-rsa', 'ssh-dss']
             )
 
             async with asyncssh.connect(ip, username='root', password=Config.SSH_PASSWORD, options=options) as conn:
-                # Si conecta, extraemos MAC
+                # 1. Extraer MAC
                 result = await conn.run("uci show network.@device[1].macaddr", check=True)
                 mac_match = re.search(r"macaddr='([0-9a-fA-F:]{17})'", result.stdout)
 
@@ -33,30 +37,67 @@ async def process_device(ip, retries=3):
                         return "ESPERANDO_DESCONEXION", None
 
                     print(f"\n✨ [Intento {intento}] ¡Conectado! MAC: {mac}")
-                    print(f"📤 Subiendo firmware...")
-                    await asyncssh.scp(str(Config.FIRMWARE_PATH), (conn, '/tmp/Firmware_PHANTOM-F2.bin'))
+                    
+                    # 2. Verificar espacio en /tmp
+                    df_res = await conn.run("df -k /tmp")
+                    try:
+                        # Extraer espacio disponible en KB
+                        lines = df_res.stdout.splitlines()
+                        if len(lines) > 1:
+                            parts = lines[1].split()
+                            available_kb = int(parts[3])
+                            file_size_kb = Config.FIRMWARE_PATH.stat().st_size / 1024
+                            if available_kb < file_size_kb:
+                                print(f"❌ ERROR: Espacio insuficiente en /tmp. Disponible: {available_kb}KB, Requerido: {int(file_size_kb)}KB")
+                                return "ERROR_ESPACIO", None
+                    except:
+                        pass # Si falla el parseo, intentamos seguir
 
-                    # 1. Guardar Backup Histórico
+                    # 3. Subir firmware
+                    print(f"📤 Subiendo firmware ({Config.FIRMWARE_PATH.name})...")
+                    target_path = "/tmp/fw.bin"
+                    await asyncssh.scp(str(Config.FIRMWARE_PATH), (conn, target_path))
+                    
+                    # 4. Verificar subida
+                    check_file = await conn.run(f"ls -l {target_path}")
+                    if target_path not in check_file.stdout:
+                        print(f"❌ ERROR: El firmware no se encuentra en el equipo después de subirlo.")
+                        print(f"DEBUG: {check_file.stdout} {check_file.stderr}")
+                        continue
+
+                    # 4. Guardar Backup Histórico
                     ruta_backup = Config.BACKUP_DIR / "Macs_phantom_nuevos_historial.txt"
                     with open(ruta_backup, "a", encoding="utf-8") as f:
                         f.write(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | {mac}\n")
 
-                    # 2. Actualizar Sesión y RAÍZ (Sobrescribe)
+                    # 5. Actualizar Sesión y RAÍZ
                     sesion_actual.append(mac)
                     with open(Config.MAC_FILE, "w", encoding="utf-8") as f:
                         for m in sesion_actual:
                             f.write(f"{m}\n")
 
+                    # 6. Flashear
                     print(f"🚀 Ejecutando flasheo...")
                     try:
-                        await conn.run("sysupgrade -n /tmp/Firmware_PHANTOM-F2.bin")
-                    except:
+                        # Ejecutamos con un timeout corto para capturar errores de validación inmediatos
+                        # Si el equipo se reinicia, la conexión se perderá y saltará al except
+                        flash_res = await conn.run(f"sysupgrade -F -n {target_path}", timeout=10)
+                        
+                        if flash_res.exit_status != 0:
+                            # Si el error contiene "will update anyway", es un éxito (el force funcionó)
+                            if "will update anyway" in flash_res.stdout or "will update anyway" in flash_res.stderr:
+                                print(f"⚠️  Advertencia de compatibilidad saltada. Flasheo iniciado...")
+                            else:
+                                print(f"❌ ERROR: El equipo rechazó el firmware.")
+                                print(f"Detalle: {flash_res.stdout} {flash_res.stderr}")
+                                return "ERROR_FLASH", None
+                    except (asyncssh.Error, OSError, asyncio.TimeoutError):
+                        # La pérdida de conexión es normal durante un sysupgrade exitoso
                         pass
 
                     return "OK", mac
-        except (asyncssh.Error, OSError):
+        except (asyncssh.Error, OSError) as e:
             if intento < retries:
-                # Silencio en la consola mientras reintenta
                 await asyncio.sleep(2)
             else:
                 return "SIN_CONEXION", None
