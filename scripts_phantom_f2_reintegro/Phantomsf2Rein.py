@@ -5,8 +5,57 @@ import os
 import re
 import sys
 import socket
+import json
+import urllib.request
 from datetime import datetime
 from config import Config
+
+EQUIPO_MAPEO = {
+    "MPC-1OCAK8IK9CP": "Rey",
+    "DESKTOP-PT8UMBI": "Cuervonv",
+    "ALVARO": "Alvaro",
+    "DESKTOP-4D3P5N2": "Esteban",
+    "MPC-17KT4458H7R": "Kevin",
+    "DESKTOP-7D3G6V0": "Felipe",
+    "DESKTOP-R1IDN86": "Paula Andrea",
+    "MPC-71225UVI7HG": "Bryan",
+    "USUARIO-IO29QUF": "FlechasJuan"
+}
+
+def get_alias():
+    """Obtiene el nombre mapeado del equipo actual"""
+    hostname = os.getenv('COMPUTERNAME', 'Desconocido')
+    return EQUIPO_MAPEO.get(hostname, hostname)
+
+def send_webhook(macs, tipo="F2 Reintegro"):
+    """Envía un resumen de las MACs flasheadas a Discord"""
+    if not Config.WEBHOOK_URL or not macs:
+        return
+
+    try:
+        nombre_visual = get_alias()
+        lista_macs = "\n".join([f"• `{mac}`" for mac in macs])
+        
+        data = {
+            "embeds": [{
+                "title": f"👻 Lote de Phantoms {tipo} Flasheados",
+                "color": 3447003, # Azul
+                "fields": [
+                    {"name": "🔢 Equipos Procesados", "value": f"**{len(macs)}**", "inline": True},
+                    {"name": "💻 Procesado por", "value": f"**{nombre_visual}**", "inline": True},
+                    {"name": "📍 Direcciones MAC", "value": lista_macs, "inline": False},
+                    {"name": "⏰ Fecha", "value": datetime.now().strftime('%d/%m/%Y %H:%M:%S'), "inline": False}
+                ],
+                "footer": {"text": "Sistema de Automatización - Soluciones Cuervo"}
+            }]
+        }
+        
+        req = urllib.request.Request(Config.WEBHOOK_URL, data=json.dumps(data).encode('utf-8'), 
+                                   headers={'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req) as response:
+            pass
+    except Exception:
+        pass
 
 sesion_actual = []
 print_lock = asyncio.Lock()
@@ -136,6 +185,8 @@ async def main():
 
     if sesion_actual:
         print(f"\n✨ Proceso terminado. {len(sesion_actual)} MACs listas en la raíz.")
+        # Enviar notificación final
+        send_webhook(sesion_actual)
     else:
         print(f"\n⚠️ No se procesó ninguna MAC correctamente.")
 

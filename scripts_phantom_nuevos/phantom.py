@@ -9,23 +9,40 @@ import urllib.request
 from datetime import datetime
 from config import Config
 
-def send_webhook(mac, equipo_num, meta):
-    """Envía una notificación a Discord sobre el flasheo exitoso"""
-    if not Config.WEBHOOK_URL:
+EQUIPO_MAPEO = {
+    "MPC-1OCAK8IK9CP": "Rey",
+    "DESKTOP-PT8UMBI": "Cuervonv",
+    "ALVARO": "Alvaro",
+    "DESKTOP-4D3P5N2": "Esteban",
+    "MPC-17KT4458H7R": "Kevin",
+    "DESKTOP-7D3G6V0": "Felipe",
+    "DESKTOP-R1IDN86": "Paula Andrea",
+    "MPC-71225UVI7HG": "Bryan",
+    "USUARIO-IO29QUF": "FlechasJuan"
+}
+
+def get_alias():
+    """Obtiene el nombre mapeado del equipo actual"""
+    hostname = os.getenv('COMPUTERNAME', 'Desconocido')
+    return EQUIPO_MAPEO.get(hostname, hostname)
+
+def send_webhook(macs, meta):
+    """Envía un resumen de las MACs flasheadas a Discord"""
+    if not Config.WEBHOOK_URL or not macs:
         return
 
     try:
-        # Mapeo de nombres (opcional, basado en el PC actual)
-        equipo_actual = os.getenv('COMPUTERNAME', 'Desconocido')
+        nombre_visual = get_alias()
+        lista_macs = "\n".join([f"• `{mac}`" for mac in macs])
         
         data = {
             "embeds": [{
-                "title": "👻 Phantom Nuevo Flasheado",
+                "title": "👻 Lote de Phantoms Nuevos Flasheados",
                 "color": 3066993, # Verde
                 "fields": [
-                    {"name": "📍 MAC Address", "value": f"`{mac}`", "inline": True},
-                    {"name": "🔢 Progreso", "value": f"**{equipo_num} / {meta}**", "inline": True},
-                    {"name": "💻 Procesado por", "value": f"**{equipo_actual}**", "inline": True},
+                    {"name": "🔢 Equipos Procesados", "value": f"**{len(macs)} / {meta}**", "inline": True},
+                    {"name": "💻 Procesado por", "value": f"**{nombre_visual}**", "inline": True},
+                    {"name": "📍 Direcciones MAC", "value": lista_macs, "inline": False},
                     {"name": "⏰ Fecha", "value": datetime.now().strftime('%d/%m/%Y %H:%M:%S'), "inline": False}
                 ],
                 "footer": {"text": "Sistema de Automatización - Soluciones Cuervo"}
@@ -36,8 +53,7 @@ def send_webhook(mac, equipo_num, meta):
                                    headers={'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0'})
         with urllib.request.urlopen(req) as response:
             pass
-    except Exception as e:
-        # Fallo silencioso para no interrumpir el flujo principal
+    except Exception:
         pass
 
 # Registro de la sesión
@@ -125,7 +141,6 @@ async def main():
             
             if estado == "OK":
                 print(f"\n✅ Equipo #{len(sesion_actual)} finalizado correctamente.")
-                send_webhook(mac_res, len(sesion_actual), meta)
                 if len(sesion_actual) < meta:
                     print(f"🔔 CAMBIE EL EQUIPO...")
                     # Tiempo para que el usuario desconecte y el puerto se limpie
@@ -141,6 +156,9 @@ async def main():
         print(f"🎉 ¡PROCESO COMPLETADO! {meta}/{meta} equipos listos.")
         print(f"📂 Archivo 'macs.txt' actualizado en la raíz.")
         print(f"==========================================")
+        
+        # Enviar notificación final
+        send_webhook(sesion_actual, meta)
 
     except KeyboardInterrupt:
         print(f"\n\n🛑 PROCESO DETENIDO POR EL USUARIO.")
