@@ -1,4 +1,4 @@
-﻿# =====================================================================
+# =====================================================================
 # MONITOR POE - NAVEGACIÓN PREMIUM (SELECT -> MONITOR)
 # =====================================================================
 $ErrorActionPreference = "SilentlyContinue"
@@ -17,14 +17,25 @@ $Exit = "$([char]0x274C)"; $Gear = "$([char]0x2699)"
 
 $M = "Magenta"; $W = "White"; $C = "Cyan"; $Y = "Yellow"; $G = "Green"; $R = "Red"; $B = "DarkBlue"
 
-# Cachear IP y Hostname
-$script:IP = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.InterfaceAlias -like "*Ethernet*" -or $_.InterfaceAlias -like "*Wi-Fi*" } | Select-Object -First 1).IPAddress
-$EquipoMapeo = @{ "MPC-1OCAK8IK9CP" = "Rey"; "DESKTOP-PT8UMBI" = "Cuervonv"; "ALVARO" = "Alvaro"; "DESKTOP-4D3P5N2" = "Esteban"; "MPC-17KT4458H7R" = "Kevin"; "DESKTOP-7D3G6V0" = "Felipe" }
+# Cachear Hostname y mapeo
+$EquipoMapeo = @{ "MPC-1OCAK8IK9CP" = "Rey"; "DESKTOP-PT8UMBI" = "Cuervonv"; "ALVARO" = "Alvaro"; "DESKTOP-4D3P5N2" = "Esteban"; "MPC-17KT4458H7R" = "Kevin"; "DESKTOP-7D3G6V0" = "Felipe"; "DESKTOP-R1IDN86" = "Paula Andrea"; "MPC-71225UVI7HG" = "Bryan"; "USUARIO-IO29QUF" = "FlechasJuan" }
 $script:NombreVisual = if ($EquipoMapeo.ContainsKey($env:COMPUTERNAME)) { $EquipoMapeo[$env:COMPUTERNAME] } else { $env:COMPUTERNAME }
 
+function Get-AdapterIP {
+    param([int]$Index)
+    if ($Index -gt 0) {
+        $ip = (Get-NetIPAddress -InterfaceIndex $Index -AddressFamily IPv4 -ErrorAction SilentlyContinue | Select-Object -First 1).IPAddress
+        return if ($null -eq $ip) { "---.---.---.---" } else { $ip }
+    }
+    # IP por defecto si no hay seleccion (el primer ethernet/wifi con IP)
+    $ip = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.InterfaceAlias -like "*Ethernet*" -or $_.InterfaceAlias -like "*Wi-Fi*" -or $_.InterfaceAlias -like "*WiFi*" } | Select-Object -First 1).IPAddress
+    return if ($null -eq $ip) { "---.---.---.---" } else { $ip }
+}
+
 function Mostrar-Encabezado {
+    param([int]$Index = 0)
     $Fecha = Get-Date -Format "HH:mm:ss"
-    $ipStr = if ($null -eq $script:IP) { "---.---.---.---" } else { $script:IP }
+    $ipStr = Get-AdapterIP -Index $Index
     Write-Host "  IP: $($ipStr.PadRight(15)) | HOST: $($script:NombreVisual.PadRight(15)) | $Fecha" -ForegroundColor $C
 }
 
@@ -39,7 +50,8 @@ while ($true) {
 
     # Obtener adaptadores fisicos (Forzado como Array para asegurar .Count)
     $adapters = @(Get-NetAdapter -Physical | Where-Object { 
-            $_.InterfaceDescription -notmatch "Wi-Fi|Wireless|Bluetooth|Tailscale|vEthernet|Virtual|VPN|Pseudo|Loopback" 
+            $_.InterfaceDescription -notmatch "Wi-Fi|WiFi|Wireless|Bluetooth|Tailscale|vEthernet|Virtual|VPN|Pseudo|Loopback" -and
+            $_.Name -notmatch "Wi-Fi|WiFi"
         })
 
     if ($adapters.Count -eq 0) {
@@ -80,8 +92,10 @@ while ($true) {
         continue
     }
 
-    $TargetAdapter = $adapters[$idx - 1].Name
-    $TargetDesc = $adapters[$idx - 1].InterfaceDescription
+    $TargetAdapterObj = $adapters[$idx - 1]
+    $TargetName = $TargetAdapterObj.Name
+    $TargetIndex = $TargetAdapterObj.InterfaceIndex
+    $TargetDesc = $TargetAdapterObj.InterfaceDescription
 
     # BUCLE DE MONITOREO
     while ($true) {
@@ -91,15 +105,15 @@ while ($true) {
         }
 
         Clear-Host
-        Mostrar-Encabezado
+        Mostrar-Encabezado -Index $TargetIndex
         Write-Host ""
         
         Write-Host "  $TL$H_Line$TR" -ForegroundColor $M
-        Write-Host "  $V" -NoNewline -ForegroundColor $M; Write-Host "  $Plug  MONITOREANDO: $($TargetAdapter.PadRight(34))    " -NoNewline -ForegroundColor $C; Write-Host    "$V" -ForegroundColor $M
+        Write-Host "  $V" -NoNewline -ForegroundColor $M; Write-Host "  $Plug  MONITOREANDO: $($TargetName.PadRight(34))    " -NoNewline -ForegroundColor $C; Write-Host    "$V" -ForegroundColor $M
         Write-Host "  $V" -NoNewline -ForegroundColor $M; Write-Host "  MODELO: $($TargetDesc.PadRight(42))      " -NoNewline -ForegroundColor "DarkGray"; Write-Host "$V" -ForegroundColor $M
         Write-Host "  $ML$H_Line$MR" -ForegroundColor $M
 
-        $adapter = Get-NetAdapter -Name $TargetAdapter
+        $adapter = Get-NetAdapter -InterfaceIndex $TargetIndex
         
         if ($adapter.Status -ne "Up") {
             Write-Host "  $V" -NoNewline -ForegroundColor $M; Write-Host "  [ $R$Exit$W ] ESTADO: DESCONECTADO / SIN SENAL              " -NoNewline -ForegroundColor $W; Write-Host "$V" -ForegroundColor $M
