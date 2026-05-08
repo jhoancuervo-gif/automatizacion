@@ -29,6 +29,9 @@ class Config:
     SSH_PASSWORD = os.getenv("SSH_PASSWORD", "M7h$)Fw3|;63*h?ET")
     FIRMWARE_PATH = CURRENT_DIR / "Firmware_PHANTOM.bin"
 
+    # Notificaciones
+    WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL")
+
 class PortalConfig:
     """Configuración para el Portal ISP"""
     USERNAME = os.getenv("ISP_USERNAME")

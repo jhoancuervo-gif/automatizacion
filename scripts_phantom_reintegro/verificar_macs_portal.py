@@ -4,7 +4,6 @@ import re
 from bs4 import BeautifulSoup
 from config import PortalConfig, Config
 
-
 def login_session():
     session = requests.Session()
     session.headers.update({'User-Agent': 'Mozilla/5.0'})
@@ -63,6 +62,9 @@ def main():
         return
     print(f"✅ Sesión iniciada. Verificando {len(macs)} equipos...\n")
 
+    count_encontradas = 0
+    count_no_encontradas = 0
+
     for mac in macs:
         # Limpieza para búsqueda interna si el portal requiere formato plano
         mac_clean = mac.replace(":", "").replace(".", "").replace("-", "")
@@ -91,11 +93,14 @@ def main():
 
             if encontrada:
                 print(f" > {mac} -> 🟩 ENCONTRADA")
+                count_encontradas += 1
             else:
                 print(f" > {mac} -> 🟥 NO ESTÁ EN EL PORTAL")
+                count_no_encontradas += 1
 
         except Exception as e:
             print(f" > {mac} -> ⚠️ ERROR AL CONSULTAR: {e}")
+            count_no_encontradas += 1
 
     print("\n==========================================")
     print("✅ PROCESO DE VERIFICACIÓN FINALIZADO")

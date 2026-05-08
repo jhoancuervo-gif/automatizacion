@@ -5,8 +5,39 @@ import os
 import re
 import sys
 import socket
+import json
+import urllib.request
 from datetime import datetime
 from config import Config
+
+def send_webhook(mac, ip, tipo="Reintegro"):
+    """Envía una notificación a Discord sobre el flasheo exitoso"""
+    if not Config.WEBHOOK_URL:
+        return
+
+    try:
+        equipo_actual = os.getenv('COMPUTERNAME', 'Desconocido')
+        
+        data = {
+            "embeds": [{
+                "title": f"👻 Phantom {tipo} Flasheado",
+                "color": 3447003, # Azul para Reintegro
+                "fields": [
+                    {"name": "📍 MAC Address", "value": f"`{mac}`", "inline": True},
+                    {"name": "🌐 IP Origen", "value": f"`{ip}`", "inline": True},
+                    {"name": "💻 Procesado por", "value": f"**{equipo_actual}**", "inline": True},
+                    {"name": "⏰ Fecha", "value": datetime.now().strftime('%d/%m/%Y %H:%M:%S'), "inline": False}
+                ],
+                "footer": {"text": "Sistema de Automatización - Soluciones Cuervo"}
+            }]
+        }
+        
+        req = urllib.request.Request(Config.WEBHOOK_URL, data=json.dumps(data).encode('utf-8'), 
+                                   headers={'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req) as response:
+            pass
+    except Exception:
+        pass
 
 sesion_actual = []
 print_lock = asyncio.Lock()
@@ -95,6 +126,10 @@ async def process_device(ip, semaphore):
                         
                     async with print_lock:
                         print(f" ✅ OK ({mac})")
+                    
+                    # Enviar notificación Webhook
+                    send_webhook(mac, ip)
+                    
                     return True
                 
                 async with print_lock:

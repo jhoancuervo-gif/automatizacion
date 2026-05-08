@@ -4,8 +4,41 @@ import asyncssh
 import os
 import re
 import sys
+import json
+import urllib.request
 from datetime import datetime
 from config import Config
+
+def send_webhook(mac, equipo_num, meta):
+    """Envía una notificación a Discord sobre el flasheo exitoso"""
+    if not Config.WEBHOOK_URL:
+        return
+
+    try:
+        # Mapeo de nombres (opcional, basado en el PC actual)
+        equipo_actual = os.getenv('COMPUTERNAME', 'Desconocido')
+        
+        data = {
+            "embeds": [{
+                "title": "👻 Phantom Nuevo Flasheado",
+                "color": 3066993, # Verde
+                "fields": [
+                    {"name": "📍 MAC Address", "value": f"`{mac}`", "inline": True},
+                    {"name": "🔢 Progreso", "value": f"**{equipo_num} / {meta}**", "inline": True},
+                    {"name": "💻 Procesado por", "value": f"**{equipo_actual}**", "inline": True},
+                    {"name": "⏰ Fecha", "value": datetime.now().strftime('%d/%m/%Y %H:%M:%S'), "inline": False}
+                ],
+                "footer": {"text": "Sistema de Automatización - Soluciones Cuervo"}
+            }]
+        }
+        
+        req = urllib.request.Request(Config.WEBHOOK_URL, data=json.dumps(data).encode('utf-8'), 
+                                   headers={'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req) as response:
+            pass
+    except Exception as e:
+        # Fallo silencioso para no interrumpir el flujo principal
+        pass
 
 # Registro de la sesión
 sesion_actual = []
@@ -92,6 +125,7 @@ async def main():
             
             if estado == "OK":
                 print(f"\n✅ Equipo #{len(sesion_actual)} finalizado correctamente.")
+                send_webhook(mac_res, len(sesion_actual), meta)
                 if len(sesion_actual) < meta:
                     print(f"🔔 CAMBIE EL EQUIPO...")
                     # Tiempo para que el usuario desconecte y el puerto se limpie

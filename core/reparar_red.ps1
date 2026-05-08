@@ -18,8 +18,7 @@ Write-Host ""
 Write-Host "  Opciones disponibles:" -ForegroundColor Cyan
 Write-Host "  1. Limpieza Rapida (ARP, DNS, Cache)" -ForegroundColor White
 Write-Host "  2. Reset Profundo (Winsock, Stack IP) - Requiere Reinicio" -ForegroundColor White
-Write-Host "  3. Liberar y Renovar DHCP" -ForegroundColor White
-Write-Host "  4. Diagnostico de Conexion (Ping 192.168.1.1)" -ForegroundColor White
+Write-Host "  3. Diagnostico de Conexion (Ping 192.168.1.1)" -ForegroundColor White
 Write-Host "  0. Volver al Menu Principal" -ForegroundColor White
 Write-Host ""
 
@@ -64,19 +63,6 @@ switch ($opcion) {
         }
     }
     "3" {
-        Show-Header
-        Write-Host "  [*] Liberando IP actual..." -NoNewline
-        ipconfig /release > $null
-        Write-Host " [OK]" -ForegroundColor Green
-        
-        Write-Host "  [*] Solicitando nueva IP..." -NoNewline
-        ipconfig /renew > $null
-        Write-Host " [OK]" -ForegroundColor Green
-        
-        Write-Host "`n  [+] DHCP Refrescado." -ForegroundColor Green
-        Pause
-    }
-    "4" {
         Show-Header
         $TargetIP = "192.168.1.1"
         Write-Host "  [*] Verificando conexion con $TargetIP..." -ForegroundColor Cyan

@@ -29,6 +29,9 @@ class Config:
     
     # Firmware local
     FIRMWARE_PATH = CURRENT_DIR / "Firmware_PHANTOM.bin"
+    
+    # Notificaciones
+    WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL")
 
 class PortalConfig:
     """Configuración del Portal ISP"""
