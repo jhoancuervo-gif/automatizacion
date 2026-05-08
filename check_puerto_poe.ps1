@@ -48,31 +48,37 @@ while ($true) {
     Write-Host "  $V" -NoNewline -ForegroundColor $M; Write-Host "  $Search  SELECCION DE PUERTO PARA MONITOREO                  " -NoNewline -ForegroundColor $W; Write-Host "$V" -ForegroundColor $M
     Write-Host "  $ML$H_Line$MR" -ForegroundColor $M
 
-    # Obtener adaptadores fisicos (Ordenados para estabilidad)
+    # Obtener adaptadores fisicos (Ordenados por nombre)
     $adapters = @(Get-NetAdapter -Physical | Where-Object { 
             $_.InterfaceDescription -notmatch "Wi-Fi|WiFi|Wireless|Bluetooth|Tailscale|vEthernet|Virtual|VPN|Pseudo|Loopback" -and
             $_.Name -notmatch "Wi-Fi|WiFi"
-        } | Sort-Object InterfaceIndex)
+        } | Sort-Object Name)
 
     if ($adapters.Count -eq 0) {
         Write-Host "  $V" -NoNewline -ForegroundColor $M; Write-Host "  [!] No se encontraron puertos fisicos disponibles." -NoNewline -ForegroundColor $R; Write-Host "$V" -ForegroundColor $M
     }
     else {
+        $selectionMap = @{}
         for ($i = 0; $i -lt $adapters.Count; $i++) {
-            $status = $adapters[$i].Status
+            $adapterObj = $adapters[$i]
+            $idNum = $i + 1
+            $id = $idNum.ToString()
+            $selectionMap[$id] = $adapterObj
+
+            $status = $adapterObj.Status
             $statusChar = if ($status -eq "Up") { "$G" } else { "$R" }
-            $id = ($i + 1).ToString().PadLeft(2)
-            $name = $adapters[$i].Name.PadRight(15)
-            $desc = $adapters[$i].InterfaceDescription
-            if ($desc.Length -gt 30) { $desc = $desc.Substring(0, 27) + "..." }
-            $desc = $desc.PadRight(30)
+            $name = $adapterObj.Name.PadRight(15)
+            $desc = $adapterObj.InterfaceDescription
+            if ($desc.Length -gt 25) { $desc = $desc.Substring(0, 22) + "..." }
+            $desc = $desc.PadRight(25)
+            $ifIndex = $adapterObj.InterfaceIndex.ToString().PadLeft(2)
 
             Write-Host "  $V" -NoNewline -ForegroundColor $M
-            Write-Host "  [$id]" -NoNewline -ForegroundColor $Y
+            Write-Host "  [$($id.PadLeft(2))]" -NoNewline -ForegroundColor $Y
             Write-Host " $name" -NoNewline -ForegroundColor $W
             Write-Host " | " -NoNewline -ForegroundColor $M
             Write-Host "$($status.ToString().PadRight(6))" -NoNewline -ForegroundColor $statusChar
-            Write-Host " | $desc " -NoNewline -ForegroundColor "DarkGray"
+            Write-Host " | IDX:$ifIndex | $desc " -NoNewline -ForegroundColor "DarkGray"
             Write-Host "$V" -ForegroundColor $M
         }
     }
@@ -85,19 +91,18 @@ while ($true) {
     
     $selection = Read-Host
     if ($selection -eq "0") { exit }
-
-    if (-not [int]::TryParse($selection, [ref]$idx) -or $idx -lt 1 -or $idx -gt $adapters.Count) {
-        Write-Host "`n  [!] Seleccion no valida." -ForegroundColor $R
+    if (-not $selectionMap.ContainsKey($selection)) {
+        Write-Host "`n  [!] ID '$selection' no valido." -ForegroundColor $R
         Start-Sleep -Seconds 1
         continue
     }
 
-    $TargetAdapterObj = $adapters[$idx - 1]
+    $TargetAdapterObj = $selectionMap[$selection]
     $TargetName = $TargetAdapterObj.Name
     $TargetIndex = $TargetAdapterObj.InterfaceIndex
     $TargetDesc = $TargetAdapterObj.InterfaceDescription
 
-    Write-Host "`n  [+] Seleccionado: $TargetName" -ForegroundColor $G
+    Write-Host "`n  [+] Seleccionado: $TargetName (IDX: $TargetIndex)" -ForegroundColor $G
     Start-Sleep -Milliseconds 300
 
     # BUCLE DE MONITOREO
