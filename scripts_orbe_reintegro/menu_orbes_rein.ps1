@@ -1,51 +1,61 @@
-﻿$host.ui.RawUI.WindowTitle = "SUB-MENU: ORBE REINTEGRO - CUERVO"
+$ErrorActionPreference = "SilentlyContinue"
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$host.ui.RawUI.WindowTitle = "SUB-MENU: ORBE REINTEGRO - CUERVO"
+
+# --- DEFINICION DE CARACTERES ESPECIALES ---
+$TL = [char]0x2554; $H = [char]0x2550; $TR = [char]0x2557; $V = [char]0x2551
+$ML = [char]0x2560; $MR = [char]0x2563; $BL = [char]0x255A; $BR = [char]0x255D
+$H_Line = New-Object String ($H, 58)
+
+$Orb = "$([char]0xD83D)$([char]0xDD2E)"; $Search = "$([char]0xD83D)$([char]0xDD0D)"
+$Exit = "$([char]0x274C)"; $Warning = "$([char]0x26A0)"; $Sync = "$([char]0xD83D)$([char]0xDD04)"
+$Bolt = "$([char]0x26A1)"; $Trash = "$([char]0xD83D)$([char]0xDDD1)"
 
 function Mostrar-MenuOrbeR {
     Clear-Host
-    $M = "Magenta"; $W = "White"; $C = "Cyan"; $Y = "Yellow"; $B = "DarkBlue"
+    $M = "Magenta"; $W = "White"; $Y = "Yellow"; $C = "Cyan"; $B = "DarkBlue"
 
     Write-Host ""
-    Write-Host "  ╔══════════════════════════════════════════════════════════╗" -ForegroundColor $M
-    Write-Host "  ║" -NoNewline -ForegroundColor $M; Write-Host "  🔮  SUB-MENU: ORBE REINTEGRO - CUERVO                   " -NoNewline -ForegroundColor $W; Write-Host "║" -ForegroundColor $M
-    Write-Host "  ╠══════════════════════════════════════════════════════════╣" -ForegroundColor $M
-    Write-Host "  ║                                                          ║" -ForegroundColor $M
+    Write-Host "  $TL$H_Line$TR" -ForegroundColor $M
+    Write-Host "  $V " -NoNewline -ForegroundColor $M; Write-Host "           $Orb SUB-MENU: ORBE REINTEGRO               " -NoNewline -ForegroundColor $W; [Console]::CursorLeft = 61; Write-Host "$V" -ForegroundColor $M
+    Write-Host "  $ML$H_Line$MR" -ForegroundColor $M
+    Write-Host "  $V" -NoNewline -ForegroundColor $M; [Console]::CursorLeft = 61; Write-Host "$V" -ForegroundColor $M
     
-    Write-Host "  ║" -NoNewline -ForegroundColor $M; Write-Host "  [ ⚡ OPERACIONES ]                                      " -NoNewline -ForegroundColor $B; Write-Host "║" -ForegroundColor $M
-    Write-Host "  ║" -NoNewline -ForegroundColor $M; Write-Host "  1. 🔄 Ejecutar Reintegro (Flashear + Reporte)           " -NoNewline -ForegroundColor $W; Write-Host "║" -ForegroundColor $M
-    Write-Host "  ║" -NoNewline -ForegroundColor $M; Write-Host "  2. 🔍 Verificar en Portal (macs.txt)                    " -NoNewline -ForegroundColor $W; Write-Host "║" -ForegroundColor $M
-    Write-Host "  ║" -NoNewline -ForegroundColor $M; Write-Host "  3. 🗑️ Eliminar del Portal (macs.txt)                    " -NoNewline -ForegroundColor $W; Write-Host "║" -ForegroundColor $M
+    Write-Host "  $V " -NoNewline -ForegroundColor $M; Write-Host "  [ $Bolt OPERACIONES ]" -NoNewline -ForegroundColor $B; [Console]::CursorLeft = 61; Write-Host "$V" -ForegroundColor $M
+    Write-Host "  $V " -NoNewline -ForegroundColor $M; Write-Host "  1. $Sync Ejecutar Reintegro (Flashear + Reporte)" -NoNewline -ForegroundColor $W; [Console]::CursorLeft = 61; Write-Host "$V" -ForegroundColor $M
+    Write-Host "  $V " -NoNewline -ForegroundColor $M; Write-Host "  2. $Search Verificar en Portal (macs.txt)" -NoNewline -ForegroundColor $W; [Console]::CursorLeft = 61; Write-Host "$V" -ForegroundColor $M
+    Write-Host "  $V " -NoNewline -ForegroundColor $M; Write-Host "  3. $Trash Eliminar del Portal (macs.txt)" -NoNewline -ForegroundColor $W; [Console]::CursorLeft = 61; Write-Host "$V" -ForegroundColor $M
     
-    Write-Host "  ║                                                          ║" -ForegroundColor $M
-    Write-Host "  ╠══════════════════════════════════════════════════════════╣" -ForegroundColor $M
-    
-    Write-Host "  ║" -NoNewline -ForegroundColor $M; Write-Host "  0. ❌  Volver al menú principal                         " -NoNewline -ForegroundColor $Y; Write-Host "║" -ForegroundColor $M
-    Write-Host "  ╚══════════════════════════════════════════════════════════╝" -ForegroundColor $M
+    Write-Host "  $V" -NoNewline -ForegroundColor $M; [Console]::CursorLeft = 61; Write-Host "$V" -ForegroundColor $M
+    Write-Host "  $ML$H_Line$MR" -ForegroundColor $M
+    Write-Host "  $V " -NoNewline -ForegroundColor $M; Write-Host "  0. $Exit VOLVER AL MENU PRINCIPAL" -NoNewline -ForegroundColor $Y; [Console]::CursorLeft = 61; Write-Host "$V" -ForegroundColor $M
+    Write-Host "  $BL$H_Line$BR" -ForegroundColor $M
     Write-Host ""
-    Write-Host "  >> Seleccione una opción: " -NoNewline -ForegroundColor $W
+    Write-Host "  >> Seleccione una opcion: " -NoNewline -ForegroundColor $W
 }
 
 do {
     Mostrar-MenuOrbeR
     $opcion = Read-Host
-
     switch ($opcion) {
         "1" {
             Write-Host "`n  [!] Iniciando proceso de flasheo de Orbes..." -ForegroundColor Cyan
             python orbe_reintegro.py
             Write-Host "`n  [+] Flasheo finalizado. Reporte abierto en Bloc de notas." -ForegroundColor Green
-            cmd.exe /c pause
+            Pause
         }
         "2" {
             Write-Host "`n  [!] Consultando portal para equipos en macs.txt..." -ForegroundColor Cyan
             python verificar_macs_portal.py
-            # Original no pausaba aquí, para ser consistente
+            Pause
         }
         "3" {
             Write-Host "`n  [!] Iniciando borrado en portal para equipos en macs.txt..." -ForegroundColor Red
             python eliminar_macs_portal.py
-            cmd.exe /c pause
+            Pause
         }
         "0" { return }
     }
 } while ($true)
+
 

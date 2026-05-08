@@ -1,4 +1,4 @@
-﻿. ../core/notify_tools.ps1
+. ../core/notify_tools.ps1
 # =====================================================================
 # SUB-MENU: PHANTOM F2 REINTEGRO - CUERVO
 # =====================================================================
@@ -8,24 +8,32 @@ $host.ui.RawUI.WindowTitle = "SUB-MENU: PHANTOM F2 REINTEGRO - CUERVO"
 
 $RootPath = Join-Path $PSScriptRoot ".."
 
+# --- DEFINICION DE CARACTERES ESPECIALES ---
+$TL = [char]0x2554; $H = [char]0x2550; $TR = [char]0x2557; $V = [char]0x2551
+$ML = [char]0x2560; $MR = [char]0x2563; $BL = [char]0x255A; $BR = [char]0x255D
+$H_Line = New-Object String ($H, 58)
+
+$Rocket = "$([char]0xD83D)$([char]0xDE80)"; $Ghost = "$([char]0xD83D)$([char]0xDC7B)"
+$Search = "$([char]0xD83D)$([char]0xDD0D)"; $Exit = "$([char]0x274C)"
+$Warning = "$([char]0x26A0)"; $Check = "$([char]0x2705)"
+
 function Mostrar-Menu {
     Clear-Host
-    $M = "Magenta"; $W = "White"; $Y = "Yellow"; $C = "Cyan"
+    $M = "Magenta"; $W = "White"; $Y = "Yellow"; $C = "Cyan"; $B = "DarkBlue"; $R = "Red"
 
-    Write-Host ""
-    Write-Host "  +----------------------------------------------------------+" -ForegroundColor $M
-    Write-Host "  |            MENU: PHANTOM F2 REINTEGRO (212-215)          |" -ForegroundColor $W
-    Write-Host "  +----------------------------------------------------------+" -ForegroundColor $M
-    Write-Host "  |                                                          |" -ForegroundColor $M
+    Write-Host "  $TL$H_Line$TR" -ForegroundColor $M
+    Write-Host "  $V " -NoNewline -ForegroundColor $M; Write-Host "         $Ghost MENU: PHANTOM F2 REINTEGRO (212-215)" -NoNewline -ForegroundColor $W; [Console]::CursorLeft = 61; Write-Host "$V" -ForegroundColor $M
+    Write-Host "  $ML$H_Line$MR" -ForegroundColor $M
+    Write-Host "  $V" -NoNewline -ForegroundColor $M; [Console]::CursorLeft = 61; Write-Host "$V" -ForegroundColor $M
     
-    Write-Host "  |   1. REINTEGRO COMPLETO           4. VERIFICAR MACS PORTAL |" -ForegroundColor $W
-    Write-Host "  |   2. REINTEGRO PERSONALIZADO      5. ELIMINAR MACS PORTAL  |" -ForegroundColor $W
-    Write-Host "  |   3. PRUEBA DE CONEXION                                    |" -ForegroundColor $W
+    Write-Host "  $V " -NoNewline -ForegroundColor $M; Write-Host "  1. $Rocket REINTEGRO COMPLETO" -NoNewline -ForegroundColor $W; [Console]::CursorLeft = 61; Write-Host "$V" -ForegroundColor $M
+    Write-Host "  $V " -NoNewline -ForegroundColor $M; Write-Host "  2. $Search VERIFICAR MACS PORTAL" -NoNewline -ForegroundColor $W; [Console]::CursorLeft = 61; Write-Host "$V" -ForegroundColor $M
+    Write-Host "  $V " -NoNewline -ForegroundColor $M; Write-Host "  3. $Warning ELIMINAR MACS PORTAL" -NoNewline -ForegroundColor $W; [Console]::CursorLeft = 61; Write-Host "$V" -ForegroundColor $M
     
-    Write-Host "  |                                                          |" -ForegroundColor $M
-    Write-Host "  +----------------------------------------------------------+" -ForegroundColor $M
-    Write-Host "  |   0. VOLVER AL MENU PRINCIPAL                            |" -ForegroundColor $Y
-    Write-Host "  +----------------------------------------------------------+" -ForegroundColor $M
+    Write-Host "  $V" -NoNewline -ForegroundColor $M; [Console]::CursorLeft = 61; Write-Host "$V" -ForegroundColor $M
+    Write-Host "  $ML$H_Line$MR" -ForegroundColor $M
+    Write-Host "  $V " -NoNewline -ForegroundColor $M; Write-Host "  0. $Exit VOLVER AL MENU PRINCIPAL" -NoNewline -ForegroundColor $Y; [Console]::CursorLeft = 61; Write-Host "$V" -ForegroundColor $M
+    Write-Host "  $BL$H_Line$BR" -ForegroundColor $M
     Write-Host ""
     Write-Host "  >> Seleccione una opcion: " -NoNewline -ForegroundColor $W
 }
@@ -36,22 +44,12 @@ do {
 
     switch ($opcion) {
         "1" {
-            Write-Host "`n  [!] Ejecutando REINTEGRO F2 COMPLETO..." -ForegroundColor Cyan
+            Write-Host "`n  $Rocket [!] Ejecutando REINTEGRO F2 COMPLETO..." -ForegroundColor Cyan
             python Phantomsf2Rein.py; Send-Notification -Title "Phantom F2" -Message "Proceso de Reintegro finalizado"
             Pause
         }
         "2" {
-            Write-Host "`n  [!] Ejecutando REINTEGRO F2 PERSONALIZADO..." -ForegroundColor Cyan
-            python Phantomsf2Rein.py; Send-Notification -Title "Phantom F2" -Message "Proceso de Reintegro finalizado"
-            Pause
-        }
-        "3" {
-            Write-Host "`n  [!] Iniciando PRUEBA DE CONEXION F2..." -ForegroundColor Cyan
-            python Phantomsf2Rein.py; Send-Notification -Title "Phantom F2" -Message "Proceso de Reintegro finalizado"
-            Pause
-        }
-        "4" {
-            Write-Host "`n  --- VERIFICAR MACs PORTAL (F2) ---" -ForegroundColor Cyan
+            Write-Host "`n  $Search --- VERIFICAR MACs PORTAL (F2) ---" -ForegroundColor Cyan
             $macsFile = Join-Path $RootPath "macs.txt"
             if (Test-Path $macsFile) {
                 Write-Host "  [+] Archivo macs.txt encontrado" -ForegroundColor Green
@@ -64,8 +62,8 @@ do {
             }
             Pause
         }
-        "5" {
-            Write-Host "`n  --- ELIMINAR MACs PORTAL (F2) ---" -ForegroundColor Red
+        "3" {
+            Write-Host "`n  $Warning --- ELIMINAR MACs PORTAL (F2) ---" -ForegroundColor Red
             $macsFile = Join-Path $RootPath "macs.txt"
             if (Test-Path $macsFile) {
                 python ../core/portal_tools.py delete --file ../macs.txt

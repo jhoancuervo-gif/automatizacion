@@ -93,7 +93,7 @@ function Mostrar-Menu {
     Write-Host "  $V                                                          $V" -ForegroundColor $M
     Write-Host "  $V" -NoNewline -ForegroundColor $M; Write-Host "  [ $Sat POE'S ]                    [ $Ghost PHANTOM'S ]        " -NoNewline -ForegroundColor $B; Write-Host "$V" -ForegroundColor $M
     Write-Host "  $V" -NoNewline -ForegroundColor $M; Write-Host "  1. Switch PoE 1.0 Gb             4. Phantom F2 Reintegro" -NoNewline -ForegroundColor $W; Write-Host "$V" -ForegroundColor $M
-    Write-Host "  $V" -NoNewline -ForegroundColor $M; Write-Host "  2. Switch PoE 2.5 Gb             5. Phantom F2 (TEST)   " -NoNewline -ForegroundColor $W; Write-Host "$V" -ForegroundColor $M
+    Write-Host "  $V" -NoNewline -ForegroundColor $M; Write-Host "  2. Switch PoE 2.5 Gb             5. Phantom F2 Nuevos   " -NoNewline -ForegroundColor $W; Write-Host "$V" -ForegroundColor $M
     Write-Host "  $V" -NoNewline -ForegroundColor $M; Write-Host "  3. $Search Verificar Puertos          6. Phantom Nuevos      " -NoNewline -ForegroundColor $W; Write-Host "$V" -ForegroundColor $M
     Write-Host "  $V" -NoNewline -ForegroundColor $M; Write-Host "                                   7. Phantom Reintegro   " -NoNewline -ForegroundColor $W; Write-Host "$V" -ForegroundColor $M
     Write-Host "  $V                                                          $V" -ForegroundColor $M
@@ -119,8 +119,8 @@ do {
         "1" { Ejecutar-Herramienta "scripts_poe_1gb" "iniciarfirmPOE.ps1" }
         "2" { Ejecutar-Herramienta "scripts_poe_2_5gb" "iniciarfirmPOE2.5.ps1" }
         "3" { $f = Join-Path $RootPath "check_puerto_poe.ps1"; if (Test-Path $f) { & $f } else { Write-Host "Error"; Pause } }
-        "4" { Ejecutar-Herramienta "scripts_phantom_f2_reintegro" "menu_phantomf2.bat" }
-        "5" { Ejecutar-Herramienta "scripts_phantom_f2" "menu_phantomf2nuevos.bat" }
+        "4" { Ejecutar-Herramienta "scripts_phantom_f2_reintegro" "menu_phantomf2.ps1" }
+        "5" { Ejecutar-Herramienta "scripts_phantom_f2" "menu_phantomf2nuevos.ps1" }
         "6" { Ejecutar-Herramienta "scripts_phantom_nuevos" "menu_phantom_nuevos.bat" }
         "7" { Ejecutar-Herramienta "scripts_phantom_reintegro" "menu_phantom.ps1" }
         "8" { Ejecutar-Herramienta "scripts_orbes_nuevas" "menu_orbes_nuevas.ps1" }
