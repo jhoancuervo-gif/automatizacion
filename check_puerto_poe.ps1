@@ -48,11 +48,11 @@ while ($true) {
     Write-Host "  $V" -NoNewline -ForegroundColor $M; Write-Host "  $Search  SELECCION DE PUERTO PARA MONITOREO                  " -NoNewline -ForegroundColor $W; Write-Host "$V" -ForegroundColor $M
     Write-Host "  $ML$H_Line$MR" -ForegroundColor $M
 
-    # Obtener adaptadores fisicos (Forzado como Array para asegurar .Count)
+    # Obtener adaptadores fisicos (Ordenados para estabilidad)
     $adapters = @(Get-NetAdapter -Physical | Where-Object { 
             $_.InterfaceDescription -notmatch "Wi-Fi|WiFi|Wireless|Bluetooth|Tailscale|vEthernet|Virtual|VPN|Pseudo|Loopback" -and
             $_.Name -notmatch "Wi-Fi|WiFi"
-        })
+        } | Sort-Object InterfaceIndex)
 
     if ($adapters.Count -eq 0) {
         Write-Host "  $V" -NoNewline -ForegroundColor $M; Write-Host "  [!] No se encontraron puertos fisicos disponibles." -NoNewline -ForegroundColor $R; Write-Host "$V" -ForegroundColor $M
@@ -96,6 +96,9 @@ while ($true) {
     $TargetName = $TargetAdapterObj.Name
     $TargetIndex = $TargetAdapterObj.InterfaceIndex
     $TargetDesc = $TargetAdapterObj.InterfaceDescription
+
+    Write-Host "`n  [+] Seleccionado: $TargetName" -ForegroundColor $G
+    Start-Sleep -Milliseconds 300
 
     # BUCLE DE MONITOREO
     while ($true) {
