@@ -121,7 +121,7 @@ do {
         "3" { $f = Join-Path $RootPath "check_puerto_poe.ps1"; if (Test-Path $f) { & $f } else { Write-Host "Error"; Pause } }
         "4" { Ejecutar-Herramienta "scripts_phantom_f2_reintegro" "menu_phantomf2.ps1" }
         "5" { Ejecutar-Herramienta "scripts_phantom_f2" "menu_phantomf2nuevos.ps1" }
-        "6" { Ejecutar-Herramienta "scripts_phantom_nuevos" "menu_phantom_nuevos.bat" }
+        "6" { Ejecutar-Herramienta "scripts_phantom_nuevos" "menu_phantom_nuevos.ps1" }
         "7" { Ejecutar-Herramienta "scripts_phantom_reintegro" "menu_phantom.ps1" }
         "8" { Ejecutar-Herramienta "scripts_orbes_nuevas" "menu_orbes_nuevas.ps1" }
         "9" { Ejecutar-Herramienta "scripts_orbe_reintegro" "menu_orbes_rein.ps1" }
