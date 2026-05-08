@@ -19,7 +19,7 @@ do {
     $passwords = @("admin", "somos123.")
     $auth = ""
 
-    # --- VALIDACIÓN DE ACCESO ---
+    # --- VALIDACION DE ACCESO ---
     Write-Host "[0/5] Validando acceso..." -NoNewline
     foreach ($p in $passwords) {
         $testAuth = "admin:$p"
@@ -44,7 +44,7 @@ do {
         Write-Host " -> MAC: $macResult" -ForegroundColor Green
     }
 
-    # --- PASO 2: PREPARACIÓN FLASH ---
+    # --- PASO 2: PREPARACION FLASH ---
     Write-Host "[2/5] Preparando Flash..." -NoNewline
     curl.exe -u $auth -s -o NUL -X POST "http://$ip/cgi/toBootLoadUpgrade.cgi" --max-time 5
     Write-Host " [OK]" -ForegroundColor Green
@@ -60,10 +60,10 @@ do {
         Start-Sleep -Seconds 3
     }
     if ($success) { Write-Host " [OK]" -ForegroundColor Green; Start-Sleep -Seconds 25 } 
-    else { Write-Host " [FALLÓ]" -ForegroundColor Red }
+    else { Write-Host " [FALLO]" -ForegroundColor Red }
 
-    # --- PASO 4: CONFIGURACIÓN (DHCP Filter y Port Forward) ---
-    # Según manual: El puerto 8 debe quedar apagado en DHCP Filter [cite: 41]
+    # --- PASO 4: CONFIGURACION (DHCP Filter y Port Forward) ---
+    # Segun manual: El puerto 8 debe quedar apagado en DHCP Filter [cite: 41]
     Write-Host "[4/5] Enviando Configuracion..." -NoNewline
     $success = $false
     for ($i = 1; $i -le 3; $i++) {
@@ -73,7 +73,7 @@ do {
         Start-Sleep -Seconds 3
     }
     if ($success) { Write-Host " [OK]" -ForegroundColor Green } 
-    else { Write-Host " [FALLÓ]" -ForegroundColor Red }
+    else { Write-Host " [FALLO]" -ForegroundColor Red }
 
     # --- PASO 5: SEGURIDAD Y REINICIO ---
     Write-Host "[5/5] Aplicando seguridad final..." -ForegroundColor Yellow
