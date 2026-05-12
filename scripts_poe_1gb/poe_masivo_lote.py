@@ -7,7 +7,7 @@ import sys
 from concurrent.futures import ThreadPoolExecutor
 
 # =====================================================================
-# CONFIGURACIÓN DEL SISTEMA (V34 - OPTIMIZED PRODUCTION)
+# CONFIGURACIÓN DEL SISTEMA (V35 - AUDIT LOG EDITION)
 # =====================================================================
 BASE_IP = "192.168.18.1"
 PASSWORDS = ["admin", "somos123."]
@@ -15,7 +15,8 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 FW_FILE = os.path.join(BASE_DIR, "upg_appimage.bin")
 CONFIG_FILE = os.path.join(BASE_DIR, "Configmanage.bin")
 LOG_FILE = os.path.join(BASE_DIR, "log_masivo.txt")
-MAX_WORKERS = 12  # Aumentado para mayor flujo en lotes de 15+
+MACS_FILE = os.path.join(BASE_DIR, "mac.txt") # Archivo para guardar MACs exitosas
+MAX_WORKERS = 12 
 
 if sys.stdout.encoding != 'utf-8':
     import io
@@ -58,7 +59,7 @@ def esperar_pulso_reinicio_fast(ip, prefix, max_down=10):
     start_up = time.time()
     while (time.time() - start_up) < 40:
         if verify_http(ip): return True
-        time.sleep(0.5) # Sondeo mas frecuente (Nitro Polling)
+        time.sleep(0.5)
     return False
 
 def subir_archivo_turbo(session, url, file_path, prefix):
@@ -70,10 +71,9 @@ def subir_archivo_turbo(session, url, file_path, prefix):
         return True 
     except: return False
 
-def flash_process_optimized(dev):
+def flash_process_final(dev):
     ip = dev['ip']
     prefix = f"[{ip}] "
-    # Jitter reducido para lotes de 15
     time.sleep((int(ip.split('.')[-1]) % 6) * 0.2)
     
     try:
@@ -90,11 +90,11 @@ def flash_process_optimized(dev):
         # 2. Config
         log(f"{prefix}Subiendo Config...", Colors.YELLOW)
         if subir_archivo_turbo(s, f"http://{ip}/cgi/SG1008.bin", CONFIG_FILE, prefix):
-            time.sleep(2) # Pausa minima
+            time.sleep(2)
             esperar_pulso_reinicio_fast(ip, prefix, max_down=6)
         else: return False
 
-        # 3. Seguridad con Reintentos Rapidos
+        # 3. Seguridad
         for _ in range(3):
             if verify_http_auth(ip, "admin", "somos123."):
                 log(f"{prefix}OK.", Colors.GREEN)
@@ -117,7 +117,7 @@ def revertir_equipo_paralelo(dev):
 def main():
     os.system('cls' if os.name == 'nt' else 'clear')
     print(f"{Colors.CYAN}==========================================================")
-    print(f"   HELLOTEK - V34 (OPTIMIZED PRODUCTION)                 ")
+    print(f"   HELLOTEK - V35 (AUDIT LOG EDITION)                    ")
     print(f"=========================================================={Colors.END}")
 
     try:
@@ -157,9 +157,9 @@ def main():
                 except: pass
         time.sleep(0.8)
 
-    log(f"\n--- FASE 2: CONFIGURACIÓN OPTIMIZADA ---", Colors.BOLD)
+    log(f"\n--- FASE 2: CONFIGURACIÓN ---", Colors.BOLD)
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-        results = list(executor.map(flash_process_optimized, discovered))
+        results = list(executor.map(flash_process_final, discovered))
     
     for i in range(len(discovered)):
         discovered[i]['status'] = "EXITO" if results[i] else "FALLO"
@@ -168,15 +168,21 @@ def main():
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
         executor.map(revertir_equipo_paralelo, discovered)
 
-    log(f"\n--- FASE 4: AUDITORÍA ---", Colors.CYAN)
+    log(f"\n--- FASE 4: AUDITORÍA Y REGISTRO ---", Colors.CYAN)
     time.sleep(4)
-    for dev in discovered:
-        if verify_http(dev['ip'], timeout=0.4):
-            revertir_equipo_paralelo(dev)
-        else:
-            log(f" [OK] {dev['ip']} libre.", Colors.GREEN)
+    exitosos = 0
+    with open(MACS_FILE, "a") as f_mac:
+        for dev in discovered:
+            if verify_http(dev['ip'], timeout=0.4):
+                revertir_equipo_paralelo(dev)
+            else:
+                if dev['status'] == "EXITO":
+                    f_mac.write(f"{dev['mac']}\n")
+                    exitosos += 1
+                log(f" [OK] {dev['ip']} libre.", Colors.GREEN)
 
     print(f"\n{Colors.GREEN}PROCESO FINALIZADO.{Colors.END}")
+    print(f"[*] MACs exitosas guardadas en: {MACS_FILE}")
     for dev in discovered:
         c = Colors.GREEN if dev['status'] == "EXITO" else Colors.RED
         print(f" MAC: {dev['mac']} | Status: {c}{dev['status']}{Colors.END}")
