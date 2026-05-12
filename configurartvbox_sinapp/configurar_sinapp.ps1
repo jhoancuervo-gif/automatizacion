@@ -40,7 +40,7 @@ while ($true) {
     Write-Host "`n🔍 Buscando $Cantidad equipos..." -ForegroundColor Cyan
     
     do {
-        $nmapOut = nmap -p 5555 --open -n -T5 192.168.10.200-230 -oG -
+        $nmapOut = nmap -p 5555 --open -n -T5 192.168.10.200-250 -oG -
         $ipsEncontradas = $nmapOut | Select-String "Host: (\d+\.\d+\.\d+\.\d+)" | ForEach-Object { $_.Matches.Groups[1].Value } | Where-Object { $_ -ne $miIP_Detectada }
 
         foreach ($ip in $ipsEncontradas) {
