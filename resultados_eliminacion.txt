@@ -1,0 +1,13 @@
+============================================================
+RESULTADOS DEL PROCESO DE ELIMINACIÓN
+============================================================
+
+Fecha: 2026-05-11 09:01:41
+Total MACs procesadas: 1
+✅ Eliminadas: 1
+❌ Errores: 0
+🔍 No encontradas: 0
+
+============================================================
+
+04:8F:00:03:3E:A4 | ELIMINADO | OS=Somos-OpenWrt 24.10.3 somosfw | Created=20 Apr 2026, 9:41 a.m. | Modified=7 May 2026, 7:35 a.m.

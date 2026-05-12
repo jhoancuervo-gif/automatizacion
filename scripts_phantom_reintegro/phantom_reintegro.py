@@ -63,8 +63,8 @@ file_lock = asyncio.Lock()
 
 async def scan_network():
     """Escanea la red buscando dispositivos con el puerto 22 abierto (SSH)."""
-    # Rango específico solicitado: 192.168.10.200-223
-    target = f"{Config.IP_BASE}200-250" if Config.IP_BASE.endswith('.') else f"{Config.IP_BASE}.200-250"
+    # Escaneo de toda la red /24
+    target = f"{Config.IP_BASE}0/24" if Config.IP_BASE.endswith('.') else f"{Config.IP_BASE}.0/24"
     
     async with print_lock:
         print(f"🔍 Escaneando red {target} en busca de equipos (Puerto 22)...")

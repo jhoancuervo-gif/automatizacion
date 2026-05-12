@@ -104,8 +104,7 @@ function Mostrar-Menu {
     Write-Host "  $ML$H_Line$MR" -ForegroundColor $M
     Write-Host "  $V" -NoNewline -ForegroundColor $M; Write-Host "  [ $Gear CONFIGURACION ]                                     " -NoNewline -ForegroundColor $W; Write-Host "$V" -ForegroundColor $M
     Write-Host "  $V" -NoNewline -ForegroundColor $M; Write-Host "  11. Instalar Dependencias (Nueva PC)                    " -NoNewline -ForegroundColor $Y; Write-Host "$V" -ForegroundColor $M
-    Write-Host "  $V" -NoNewline -ForegroundColor $M; Write-Host "  12.$Globe Cambiar Rango de IPs (No es necesario)            " -NoNewline -ForegroundColor $W; Write-Host "$V" -ForegroundColor $M
-    Write-Host "  $V" -NoNewline -ForegroundColor $M; Write-Host "  13.$Wrench Reparar Red / Reset Stack (netsh)                 " -NoNewline -ForegroundColor $C; Write-Host "$V" -ForegroundColor $M
+    Write-Host "  $V" -NoNewline -ForegroundColor $M; Write-Host "  12.$Wrench Reparar Red / Reset Stack (netsh)                 " -NoNewline -ForegroundColor $C; Write-Host "$V" -ForegroundColor $M
     Write-Host "  $V" -NoNewline -ForegroundColor $M; Write-Host "  0. $Exit Salir                                             " -NoNewline -ForegroundColor $W; Write-Host "$V" -ForegroundColor $M
     Write-Host "  $BL$H_Line$BR" -ForegroundColor $M
     Write-Host ""
@@ -127,20 +126,7 @@ do {
         "9" { Ejecutar-Herramienta "scripts_orbe_reintegro" "menu_orbes_rein.ps1" }
         "10" { Ejecutar-Herramienta "configurartvbox_sinapp" "configurar_sinapp.bat" }
         "11" { $L = Join-Path $RootPath "lanzador.bat"; if (Test-Path $L) { Start-Process "$L" -Wait } else { Write-Host "No se encuentra lanzador.bat"; Pause } }
-        "12" {
-            Write-Host "`n  --- CONFIGURACION DE RANGO ---" -ForegroundColor Cyan
-            $inicio = Read-Host "   Ingrese IP INICIAL"; $fin = Read-Host "   Ingrese IP FINAL"
-            if ($inicio -match "^\d+$" -and $fin -match "^\d+$") {
-                if (Test-Path $EnvPath) {
-                    $content = Get-Content $EnvPath
-                    $content = $content -replace "IP_START=.*", "IP_START=$inicio" -replace "IP_END=.*", "IP_END=$fin"
-                    Set-Content $EnvPath $content -Encoding UTF8
-                    Write-Host "`n  [+] Rango actualizado." -ForegroundColor Green
-                }
-            }
-            Pause
-        }
-        "13" { $R = Join-Path $RootPath "core\reparar_red.ps1"; if (Test-Path $R) { & $R } else { Write-Host "Error"; Pause } }
+        "12" { $R = Join-Path $RootPath "core\reparar_red.ps1"; if (Test-Path $R) { & $R } else { Write-Host "Error"; Pause } }
         "0" { exit }
     }
 } while ($true)
