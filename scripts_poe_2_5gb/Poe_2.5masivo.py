@@ -7,14 +7,14 @@ import sys
 from concurrent.futures import ThreadPoolExecutor
 
 # =====================================================================
-# CONFIGURACIÓN DEL SISTEMA (V33 STABLE + LOTE SIMULTÁNEO)
+# CONFIGURACIÓN DEL SISTEMA (V33 STABLE + LOTE SIMULTÁNEO 2.5Gb)
 # =====================================================================
 BASE_IP = "192.168.18.1"
 PASSWORDS = ["admin", "somos123."]
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-FW_FILE = os.path.join(BASE_DIR, "upg_appimage.bin")
-CONFIG_FILE = os.path.join(BASE_DIR, "Configmanage.bin")
-LOG_FILE = os.path.join(BASE_DIR, "log_masivo.txt")
+FW_FILE = os.path.join(BASE_DIR, "upg_appimage2.bin")
+CONFIG_FILE = os.path.join(BASE_DIR, "Configmanage2.bin")
+LOG_FILE = os.path.join(BASE_DIR, "log_masivo_2.5gb.txt")
 MACS_FILE = os.path.join(BASE_DIR, "mac.txt") 
 MAX_WORKERS = 10 
 
@@ -61,13 +61,13 @@ def verify_http_auth(ip, user, pwd):
 def esperar_pulso_reinicio(ip, prefix, max_down=12):
     start_down = time.time()
     while (time.time() - start_down) < max_down:
-        if not verify_http(ip, timeout=0.4): break
-        time.sleep(0.5)
+        if not verify_http(ip, timeout=0.3): break
+        time.sleep(0.3)
     
     start_up = time.time()
-    while (time.time() - start_up) < 45:
-        if verify_http(ip): return True
-        time.sleep(1.5)
+    while (time.time() - start_up) < 40:
+        if verify_http(ip, timeout=0.5): return True
+        time.sleep(0.7) # Polleo más rápido para detectar el retorno
     return False
 
 def esperar_equipo_original(ip, max_wait=30):
@@ -80,10 +80,11 @@ def esperar_equipo_original(ip, max_wait=30):
 def subir_archivo_turbo(session, url, file_path, prefix):
     try:
         with open(file_path, 'rb') as f:
-            r = session.post(url, files={'FN': f}, timeout=70)
-            return r.status_code == 200
+            # Para 2.5G el campo debe ser 'file'
+            r = session.post(url, files={'file': f}, timeout=75, headers={"Expect": ""})
+            return r.status_code in [200, 302]
     except (requests.exceptions.ConnectionError, requests.exceptions.ReadTimeout):
-        return True 
+        return True # El switch suele reiniciar inmediatamente
     except: return False
 
 def subir_archivo_resiliente(session, url, file_path, prefix):
@@ -104,17 +105,27 @@ def flash_process_stable(dev):
         s.auth = dev['auth']
         s.headers.update({"Connection": "close"})
         
+        # 0. Preparación
+        try:
+            log(f"{prefix}Activando modo Flash...", Colors.YELLOW)
+            s.post(f"http://{ip}/cgi/toBootLoadUpgrade.cgi", timeout=3)
+            time.sleep(8)
+        except: pass
+
         # 1. FW
-        log(f"{prefix}Subiendo FW...", Colors.YELLOW)
+        log(f"{prefix}Subiendo FW (2.5Gb)...", Colors.YELLOW)
         if subir_archivo_resiliente(s, f"http://{ip}/cgi/upg_appimage.bin", FW_FILE, prefix):
+            log(f"{prefix}FW Enviado. Grabando...", Colors.CYAN)
+            time.sleep(5)
             esperar_pulso_reinicio(ip, prefix, max_down=10)
         else: return False
 
         # 2. Config
-        log(f"{prefix}Subiendo Config...", Colors.YELLOW)
-        if subir_archivo_resiliente(s, f"http://{ip}/cgi/SG1008.bin", CONFIG_FILE, prefix):
-            time.sleep(4)
-            esperar_pulso_reinicio(ip, prefix, max_down=8)
+        log(f"{prefix}Subiendo Config (2.5Gb)...", Colors.YELLOW)
+        # El endpoint correcto para 2.5G es SW_CFG.bin
+        if subir_archivo_resiliente(s, f"http://{ip}/cgi/SW_CFG.bin", CONFIG_FILE, prefix):
+            time.sleep(2) # Reducido de 5s a 2s
+            esperar_pulso_reinicio(ip, prefix, max_down=6) # max_down reducido
         else: return False
 
         # 3. Seguridad
@@ -137,7 +148,7 @@ def flash_process_stable(dev):
 def main():
     os.system('cls' if os.name == 'nt' else 'clear')
     print(f"{Colors.CYAN}==========================================================")
-    print(f"   HELLOTEK - V33 STABLE (LOTE SIMULTÁNEO SEGURO)         ")
+    print(f"   HELLOTEK - 2.5Gb STABLE (LOTE SIMULTÁNEO SEGURO)       ")
     print(f"=========================================================={Colors.END}")
 
     try:
@@ -182,8 +193,8 @@ def main():
                 if os.name == 'nt':
                     subprocess.run(["arp", "-d", BASE_IP], capture_output=True)
                 
-                # Pausa para dar margen de maniobra en la red
-                time.sleep(1.5) 
+                # Pausa optimizada
+                time.sleep(1.0) 
                     
         time.sleep(0.2) 
 
