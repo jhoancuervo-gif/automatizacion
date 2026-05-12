@@ -7,7 +7,7 @@ import sys
 from concurrent.futures import ThreadPoolExecutor
 
 # =====================================================================
-# CONFIGURACIÓN DEL SISTEMA (V33 STABLE + MAC LOG + FLUIDO)
+# CONFIGURACIÓN DEL SISTEMA (V33 STABLE + LOTE SIMULTÁNEO)
 # =====================================================================
 BASE_IP = "192.168.18.1"
 PASSWORDS = ["admin", "somos123."]
@@ -39,22 +39,7 @@ def log(msg, color=Colors.END):
     except: pass
 
 def obtener_mac(ip):
-    # Fuerza actualización de tabla ARP (Especial para fluidez en Windows)
-    if os.name == 'nt':
-        subprocess.run(["ping", "-n", "1", "-w", "200", ip], capture_output=True)
-    
-    # Lectura nativa (Mantiene compatibilidad estricta con Termux/Android si se requiere luego)
-    if os.path.exists('/proc/net/arp'):
-        try:
-            with open('/proc/net/arp', 'r') as f:
-                for line in f:
-                    if ip in line:
-                        parts = line.split()
-                        if len(parts) >= 4 and parts[3] != "00:00:00:00:00:00":
-                            return parts[3].upper()
-        except: pass
-    
-    # Lectura Windows
+    # Lectura nativa Windows
     try:
         res = subprocess.run(["arp", "-a", ip], capture_output=True, text=True)
         match = re.search(r"([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})", res.stdout)
@@ -152,7 +137,7 @@ def flash_process_stable(dev):
 def main():
     os.system('cls' if os.name == 'nt' else 'clear')
     print(f"{Colors.CYAN}==========================================================")
-    print(f"   HELLOTEK - V33 STABLE (DISPERSIÓN ULTRARRÁPIDA)         ")
+    print(f"   HELLOTEK - V33 STABLE (LOTE SIMULTÁNEO SEGURO)         ")
     print(f"=========================================================={Colors.END}")
 
     try:
@@ -163,22 +148,20 @@ def main():
     ip_index = 3
     
     log(f"\n--- FASE 1: DISPERSIÓN CONTINUA ---", Colors.BOLD)
-    log("Iniciando escaneo... Conecta los equipos.", Colors.YELLOW)
+    log("Iniciando escaneo del switch...", Colors.YELLOW)
     
     while len(discovered) < target:
         auth = None
         try:
-            # Petición super corta al primer password
             r = requests.get(f"http://{BASE_IP}/index.htm", auth=("admin", PASSWORDS[0]), timeout=0.4)
             if r.status_code == 200:
                 auth = ("admin", PASSWORDS[0])
             elif r.status_code == 401:
-                # Solo prueba el segundo si el primero fue rechazado expresamente
                 r2 = requests.get(f"http://{BASE_IP}/index.htm", auth=("admin", PASSWORDS[1]), timeout=0.4)
                 if r2.status_code == 200:
                     auth = ("admin", PASSWORDS[1])
         except:
-            pass # No hay equipo listo aún, seguimos el bucle silenciosamente
+            pass 
 
         if auth:
             mac = obtener_mac(BASE_IP)
@@ -187,24 +170,25 @@ def main():
                 temp_ip = f"192.168.18.{ip_index}"
                 payload = {"IP": temp_ip, "MK": "255.255.255.0", "GW": "0.0.0.0", "MV": "1"}
                 
-                # Inyección "Fire and Forget"
                 try: 
                     requests.post(f"http://{BASE_IP}/cgi/sysipset.cgi", auth=auth, data=payload, timeout=0.5)
                 except: pass
                 
                 discovered.append({"mac": mac, "ip": temp_ip, "auth": auth})
                 ip_index += 1
-                log(f" [✔] INYECTADO: {mac} -> {temp_ip} | Conecta el siguiente...", Colors.GREEN)
+                log(f" [✔] INYECTADO: {mac} -> {temp_ip} | Procesando siguiente...", Colors.GREEN)
                 
-                # BLOQUEO DE SEGURIDAD: Esperamos a que la red deje de ver la 192.168.18.1
-                # Esto asegura que el cable ya se quitó o el equipo ya aplicó el cambio.
-                while verify_http(BASE_IP, timeout=0.3):
-                    time.sleep(0.2)
+                # Vaciado de caché ARP para evitar quedarse colgado en el mismo equipo
+                if os.name == 'nt':
+                    subprocess.run(["arp", "-d", BASE_IP], capture_output=True)
+                
+                # Pausa para dar margen de maniobra en la red
+                time.sleep(1.5) 
                     
-        time.sleep(0.2) # Pequeño respiro al procesador
+        time.sleep(0.2) 
 
     log(f"\n--- FASE 1.5: VERIFICACIÓN CONCURRENTE ---", Colors.BOLD)
-    log("Asegurando que todas las IPs nuevas estén operativas...", Colors.CYAN)
+    log("Asegurando IPs operativas...", Colors.CYAN)
     
     def verificar_y_esperar(dev):
         if esperar_equipo_original(dev['ip'], max_wait=20):
@@ -218,9 +202,7 @@ def main():
     
     if len(discovered) < target:
         log(f"Advertencia: Solo {len(discovered)} de {target} equipos levantaron correctamente.", Colors.YELLOW)
-        if len(discovered) == 0:
-            log("No se detectaron equipos. Abortando proceso.", Colors.RED)
-            return
+        if len(discovered) == 0: return
 
     log(f"\n--- FASE 2: CONFIGURACIÓN SEGURA ---", Colors.BOLD)
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
@@ -229,18 +211,25 @@ def main():
     for i in range(len(discovered)):
         discovered[i]['status'] = "EXITO" if results[i] else "FALLO"
 
-    log(f"\n--- FASE 3: REVERSIÓN ---", Colors.YELLOW)
+    log(f"\n--- FASE 3: REVERSIÓN BLINDADA ---", Colors.YELLOW)
     for dev in discovered:
         url = f"http://{dev['ip']}/cgi/sysipset.cgi"
         payload = {"IP": BASE_IP, "MK": "255.255.255.0", "GW": "0.0.0.0", "MV": "1"}
-        try: requests.post(url, auth=dev['auth'], data=payload, timeout=3)
-        except: pass
+        for _ in range(2): # Doble intento de seguridad
+            try: 
+                requests.post(url, auth=dev['auth'], data=payload, timeout=2)
+                break
+            except (requests.exceptions.ReadTimeout, requests.exceptions.ConnectionError):
+                break # Si corta la conexión, es porque aplicó el cambio con éxito
+            except:
+                time.sleep(1)
+        time.sleep(0.5) # Evita colapsar el switch con 10 IPs simultáneas
 
     log(f"\n--- FASE 4: AUDITORÍA Y REGISTRO ---", Colors.CYAN)
     time.sleep(5)
     with open(MACS_FILE, "a") as f_mac:
         for dev in discovered:
-            if verify_http(dev['ip']):
+            if verify_http(dev['ip']): # Reintento de rescate si el equipo sigue atascado
                 url = f"http://{dev['ip']}/cgi/sysipset.cgi"
                 payload = {"IP": BASE_IP, "MK": "255.255.255.0", "GW": "0.0.0.0", "MV": "1"}
                 try: requests.post(url, auth=dev['auth'], data=payload, timeout=3)
@@ -248,7 +237,7 @@ def main():
             else:
                 if dev['status'] == "EXITO":
                     f_mac.write(f"{dev['mac']}\n")
-                log(f" [OK] {dev['ip']} libre.", Colors.GREEN)
+                log(f" [OK] {dev['ip']} regresó al origen.", Colors.GREEN)
 
     print(f"\n{Colors.GREEN}PROCESO FINALIZADO CON ÉXITO.{Colors.END}")
     for dev in discovered:
