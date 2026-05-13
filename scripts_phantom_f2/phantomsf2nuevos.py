@@ -4,6 +4,7 @@ import asyncssh
 import os
 import re
 import sys
+import shutil
 from datetime import datetime
 from config import Config
 
@@ -38,10 +39,19 @@ async def process_device(ip, retries=3):
 
                     print(f"\n✨ [Intento {intento}] ¡Conectado! MAC: {mac}")
                     
+                    # 1. Registro inmediato (Historial F2 y Sesión)
+                    ruta_backup = Config.BACKUP_DIR / "Macs_phantom_f2_historial.txt"
+                    with open(ruta_backup, "a", encoding="utf-8") as f:
+                        f.write(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | {mac}\n")
+
+                    sesion_actual.append(mac)
+                    with open(Config.MAC_FILE, "w", encoding="utf-8") as f:
+                        for m in sesion_actual:
+                            f.write(f"{m}\n")
+
                     # 2. Verificar espacio en /tmp
                     df_res = await conn.run("df -k /tmp")
                     try:
-                        # Extraer espacio disponible en KB
                         lines = df_res.stdout.splitlines()
                         if len(lines) > 1:
                             parts = lines[1].split()
@@ -51,7 +61,7 @@ async def process_device(ip, retries=3):
                                 print(f"❌ ERROR: Espacio insuficiente en /tmp. Disponible: {available_kb}KB, Requerido: {int(file_size_kb)}KB")
                                 return "ERROR_ESPACIO", None
                     except:
-                        pass # Si falla el parseo, intentamos seguir
+                        pass 
 
                     # 3. Subir firmware
                     print(f"📤 Subiendo firmware ({Config.FIRMWARE_PATH.name})...")
@@ -62,21 +72,9 @@ async def process_device(ip, retries=3):
                     check_file = await conn.run(f"ls -l {target_path}")
                     if target_path not in check_file.stdout:
                         print(f"❌ ERROR: El firmware no se encuentra en el equipo después de subirlo.")
-                        print(f"DEBUG: {check_file.stdout} {check_file.stderr}")
                         continue
 
-                    # 4. Guardar Backup Histórico
-                    ruta_backup = Config.BACKUP_DIR / "Macs_phantom_nuevos_historial.txt"
-                    with open(ruta_backup, "a", encoding="utf-8") as f:
-                        f.write(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | {mac}\n")
-
-                    # 5. Actualizar Sesión y RAÍZ
-                    sesion_actual.append(mac)
-                    with open(Config.MAC_FILE, "w", encoding="utf-8") as f:
-                        for m in sesion_actual:
-                            f.write(f"{m}\n")
-
-                    # 6. Flashear
+                    # 5. Flashear
                     print(f"🚀 Ejecutando flasheo...")
                     try:
                         # Ejecutamos con un timeout corto para capturar errores de validación inmediatos
@@ -105,9 +103,17 @@ async def process_device(ip, retries=3):
 
 
 async def main():
-    # REGLA DE ORO: Limpiar raíz al iniciar
-    if Config.MAC_FILE.exists():
-        open(Config.MAC_FILE, 'w').close()
+    # REGLA DE ORO: Respaldar sesión previa y limpiar raíz
+    if Config.MAC_FILE.exists() and Config.MAC_FILE.stat().st_size > 0:
+        try:
+            fecha_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+            backup_session = Config.BACKUP_DIR / f"macs_previas_{fecha_str}.txt"
+            shutil.copy(Config.MAC_FILE, backup_session)
+            print(f"📦 Respaldo de sesión previa creado: {backup_session.name}")
+        except Exception as e:
+            print(f"⚠️  No se pudo crear el respaldo de sesión: {e}")
+
+    open(Config.MAC_FILE, 'w').close()
 
     print(f"\n==========================================")
     print(f"   PHANTOM NUEVOS - MODO REINTENTOS 3X")
