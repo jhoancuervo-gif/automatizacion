@@ -101,48 +101,50 @@ def flash_process_stable(dev):
     time.sleep(int(ip.split('.')[-1]) % 5 * 0.5)
     
     try:
-        s = requests.Session()
-        s.auth = dev['auth']
-        s.headers.update({"Connection": "close"})
-        
-        # 0. Preparación
-        try:
-            log(f"{prefix}Activando modo Flash...", Colors.YELLOW)
-            s.post(f"http://{ip}/cgi/toBootLoadUpgrade.cgi", timeout=3)
-            time.sleep(8)
-        except: pass
-
-        # 1. FW
-        log(f"{prefix}Subiendo FW (2.5Gb)...", Colors.YELLOW)
-        if subir_archivo_resiliente(s, f"http://{ip}/cgi/upg_appimage.bin", FW_FILE, prefix):
-            log(f"{prefix}FW Enviado. Grabando...", Colors.CYAN)
-            time.sleep(5)
-            esperar_pulso_reinicio(ip, prefix, max_down=10)
-        else: return False
-
-        # 2. Config
-        log(f"{prefix}Subiendo Config (2.5Gb)...", Colors.YELLOW)
-        # El endpoint correcto para 2.5G es SW_CFG.bin
-        if subir_archivo_resiliente(s, f"http://{ip}/cgi/SW_CFG.bin", CONFIG_FILE, prefix):
-            time.sleep(2) # Reducido de 5s a 2s
-            esperar_pulso_reinicio(ip, prefix, max_down=6) # max_down reducido
-        else: return False
-
-        # 3. Seguridad
-        log(f"{prefix}Verificando clave...", Colors.CYAN)
-        for _ in range(3):
-            if verify_http_auth(ip, "admin", "somos123."):
-                log(f"{prefix}INTEGRIDAD OK.", Colors.GREEN)
-                dev['auth'] = ("admin", "somos123.")
-                return True
-            try:
-                auth_temp = ("admin", "admin")
-                data = {"U": "admin", "NU": "admin", "P1": "somos123.", "P2": "somos123."}
-                requests.post(f"http://{ip}/cgi/usermng.cgi", auth=auth_temp, data=data, timeout=5)
-                time.sleep(2)
-            except: pass
+        with requests.Session() as s:
+            s.auth = dev['auth']
+            s.headers.update({"Connection": "close"})
             
-        return False
+            # 0. Preparación
+            try:
+                log(f"{prefix}Activando modo Flash...", Colors.YELLOW)
+                s.post(f"http://{ip}/cgi/toBootLoadUpgrade.cgi", timeout=3)
+                time.sleep(8)
+            except Exception as e:
+                with open(LOG_FILE, "a", encoding="utf-8") as f:
+                    f.write(f"[{time.strftime('%H:%M:%S')}] {prefix}Excepción en modo Flash (ignorado): {e}\n")
+
+            # 1. FW
+            log(f"{prefix}Subiendo FW (2.5Gb)...", Colors.YELLOW)
+            if subir_archivo_resiliente(s, f"http://{ip}/cgi/upg_appimage.bin", FW_FILE, prefix):
+                log(f"{prefix}FW Enviado. Grabando...", Colors.CYAN)
+                time.sleep(5)
+                esperar_pulso_reinicio(ip, prefix, max_down=10)
+            else: return False
+
+            # 2. Config
+            log(f"{prefix}Subiendo Config (2.5Gb)...", Colors.YELLOW)
+            # El endpoint correcto para 2.5G es SW_CFG.bin
+            if subir_archivo_resiliente(s, f"http://{ip}/cgi/SW_CFG.bin", CONFIG_FILE, prefix):
+                time.sleep(2) # Reducido de 5s a 2s
+                esperar_pulso_reinicio(ip, prefix, max_down=6) # max_down reducido
+            else: return False
+
+            # 3. Seguridad
+            log(f"{prefix}Verificando clave...", Colors.CYAN)
+            for _ in range(3):
+                if verify_http_auth(ip, "admin", "somos123."):
+                    log(f"{prefix}INTEGRIDAD OK.", Colors.GREEN)
+                    dev['auth'] = ("admin", "somos123.")
+                    return True
+                try:
+                    auth_temp = ("admin", "admin")
+                    data = {"U": "admin", "NU": "admin", "P1": "somos123.", "P2": "somos123."}
+                    requests.post(f"http://{ip}/cgi/usermng.cgi", auth=auth_temp, data=data, timeout=5)
+                    time.sleep(2)
+                except: pass
+                
+            return False
     except: return False
 
 def main():
@@ -191,7 +193,14 @@ def main():
                 
                 # Vaciado de caché ARP para evitar quedarse colgado en el mismo equipo
                 if os.name == 'nt':
-                    subprocess.run(["arp", "-d", BASE_IP], capture_output=True)
+                    try:
+                        res_arp = subprocess.run(["arp", "-d", BASE_IP], capture_output=True, text=True)
+                        if res_arp.returncode != 0:
+                            with open(LOG_FILE, "a", encoding="utf-8") as f:
+                                f.write(f"[{time.strftime('%H:%M:%S')}] Advertencia ARP: {res_arp.stderr.strip() or 'Fallo silencioso'}\n")
+                    except Exception as e:
+                        with open(LOG_FILE, "a", encoding="utf-8") as f:
+                            f.write(f"[{time.strftime('%H:%M:%S')}] Error en ARP: {e}\n")
                 
                 # Pausa optimizada
                 time.sleep(1.0) 

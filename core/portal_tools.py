@@ -93,22 +93,70 @@ def delete_macs(mac_file):
         det_soup = BeautifulSoup(det_res.text, 'html.parser')
         
         # Buscar botón de eliminación
-        del_link = det_soup.select_one('.deletelink')
-        if not del_link:
-            print("❌ No se puede eliminar (¿ya desactivada?)")
+        action_btn = det_soup.select_one('.deletelink')
+        if not action_btn:
+            print("❌ No se puede eliminar (no hay botón)")
             continue
             
-        # Seguir flujo de eliminación
-        confirm_url = urljoin(details_url, del_link['href'])
-        conf_res = session.get(confirm_url)
-        conf_soup = BeautifulSoup(conf_res.text, 'html.parser')
+        btn_val = (action_btn.get("value") or action_btn.text).strip().lower()
+        success = False
         
-        # Formulario de confirmación
-        csrf = conf_soup.find('input', {'name': 'csrfmiddlewaretoken'})['value']
-        post_data = {'csrfmiddlewaretoken': csrf, 'post': 'yes'}
-        
-        del_res = session.post(confirm_url, data=post_data, headers={'Referer': confirm_url})
-        if del_res.status_code == 200:
+        # PASO 1: SI ES DEACTIVATE
+        if "deactivate" in btn_val:
+            form_id = action_btn.get("form")
+            target_form = det_soup.find("form", id=form_id) if form_id else action_btn.find_parent("form")
+            if target_form:
+                payload = {inp.get("name"): inp.get("value", "") for inp in target_form.find_all("input") if inp.get("name")}
+                payload["csrfmiddlewaretoken"] = session.cookies.get("csrftoken", "")
+                action = target_form.get("action")
+                post_url = urljoin(details_url, action) if action else details_url
+                session.post(post_url, data=payload, headers={"Referer": details_url})
+                time.sleep(1)
+                
+                # Recargar para buscar el botón Delete
+                det_res = session.get(details_url)
+                det_soup = BeautifulSoup(det_res.text, 'html.parser')
+                action_btn = det_soup.select_one('.deletelink')
+                if action_btn:
+                    btn_val = (action_btn.get("value") or action_btn.text).strip().lower()
+
+        # PASO 2: SI ES DELETE
+        if action_btn and ("delete" in btn_val or "eliminar" in btn_val):
+            if action_btn.name == "a" and action_btn.get("href"):
+                delete_url = urljoin(details_url, action_btn.get("href"))
+                del_page = session.get(delete_url)
+                del_soup = BeautifulSoup(del_page.text, "html.parser")
+                
+                target_form = None
+                for f in del_soup.find_all("form"):
+                    if f.get("id") == "logout-form": continue
+                    if f.find("input", {"name": "csrfmiddlewaretoken"}):
+                        target_form = f
+                        break
+                        
+                if target_form:
+                    payload = {inp.get("name"): inp.get("value", "") for inp in target_form.find_all(["input", "button"]) if inp.get("name")}
+                    payload["csrfmiddlewaretoken"] = session.cookies.get("csrftoken", "")
+                    payload["post"] = "yes"
+                    payload["force_delete"] = "true"
+                    action = target_form.get("action")
+                    post_url = urljoin(delete_url, action) if action else delete_url
+                    session.post(post_url, data=payload, headers={"Referer": delete_url}, allow_redirects=False)
+                    success = True
+            elif action_btn.name in ["input", "button"]:
+                form_id = action_btn.get("form")
+                target_form = det_soup.find("form", id=form_id) if form_id else action_btn.find_parent("form")
+                if target_form:
+                    payload = {inp.get("name"): inp.get("value", "") for inp in target_form.find_all("input") if inp.get("name")}
+                    payload["csrfmiddlewaretoken"] = session.cookies.get("csrftoken", "")
+                    payload["post"] = "yes"
+                    payload["force_delete"] = "true"
+                    action = target_form.get("action")
+                    post_url = urljoin(details_url, action) if action else details_url
+                    session.post(post_url, data=payload, headers={"Referer": details_url}, allow_redirects=False)
+                    success = True
+
+        if success:
             print("✅ ELIMINADA")
             log_to_master("PORTAL_DELETE", mac, "ELIMINADA_OK")
         else:
