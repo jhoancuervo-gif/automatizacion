@@ -1,150 +1,206 @@
 ﻿# ==============================================================================
-# ESTACIÓN DE TRABAJO CUERVO - CONFIGURACIÓN FULL + LIMPIEZA SOMOS (RUNSPACES)
+# ESTACIÓN DE TRABAJO CUERVO - V2.17 (VERSIÓN GOLD - CENTINELA GLOBAL)
 # ==============================================================================
 
-# 1. RUTAS AUTOMÁTICAS
 $scriptDir = $PSScriptRoot
 $adbExe = Join-Path $scriptDir "platform-tools\adb.exe"
 $ArchivoMAC = Join-Path $scriptDir "tvboxes_configurados.txt"
 $ArchivoBackup = Join-Path $scriptDir "mac_backup.txt"
-$MaxParalelo = 10 # <-- Límite de equipos en simultáneo real
+$MaxParalelo = 15 
 
-# 2. DETECTAR MI IP ACTUAL AUTOMÁTICAMENTE
+if (-not (Test-Path $adbExe)) { 
+    Write-Host "❌ ERROR: No veo adb.exe en $adbExe" -ForegroundColor Red
+    pause; exit 
+}
+
+# 1. DETECTAR MI IP ACTUAL AUTOMÁTICAMENTE
 $miIP_Detectada = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { 
-        $_.InterfaceAlias -notlike "*Wi-Fi*" -and 
-        $_.InterfaceAlias -notlike "*vEthernet*" -and 
-        $_.IPAddress -like "192.168.10.*"
-    } | Select-Object -First 1).IPAddress
+    $_.InterfaceAlias -notlike "*Wi-Fi*" -and 
+    $_.InterfaceAlias -notlike "*vEthernet*" -and 
+    $_.IPAddress -like "192.168.10.*"
+} | Select-Object -First 1).IPAddress
 
 if (-not $miIP_Detectada) { $miIP_Detectada = "0.0.0.0" }
-
-$segmentoBase = "192.168.10."
-$RangoIPs = 200..250
 
 while ($true) {
     Clear-Host
     Write-Host "========================================" -ForegroundColor Magenta
-    Write-Host "   ESTACION DE TRABAJO CUERVO - MODO MULTIHILO " -ForegroundColor Magenta
-    Write-Host "   IP PC: $miIP_Detectada | Rango: $segmentoBase$($RangoIPs[0])-$($RangoIPs[-1])" -ForegroundColor Gray
+    Write-Host "    ESTACION DE TRABAJO CUERVO - V2.17  " -ForegroundColor Magenta
+    Write-Host "    IP PC: $miIP_Detectada | DHCP: .200-.250 " -ForegroundColor Gray
+    Write-Host "========================================" -ForegroundColor Magenta
+    Write-Host " 1. Configurar y Limpiar App SOMOS" -ForegroundColor Cyan
+    Write-Host " 2. HARD RESET (Borrado de Fabrica)" -ForegroundColor Yellow
+    Write-Host " 3. Salir" -ForegroundColor Red
     Write-Host "========================================" -ForegroundColor Magenta
 
+    $Opcion = Read-Host "`nElige una opcion (1, 2 o 3)"
+    if ($Opcion -eq "3") { break }
+    if ($Opcion -notmatch "^[12]$") { continue }
+
     $Cantidad = 0
-    $inputUser = Read-Host "`n¿Cuántos equipos quieres procesar en este lote?"
+    $inputUser = Read-Host "¿Equipos para este lote?"
     if (-not [int]::TryParse($inputUser, [ref]$Cantidad)) { $Cantidad = 1 }
 
     & $adbExe kill-server 2>$null
     & $adbExe start-server 2>$null
 
-    # 4. ESCANEO RÁPIDO NMAP
-    $tvboxes = @()
-    Write-Host "`n🔍 Buscando $Cantidad equipos..." -ForegroundColor Cyan
+    # TEXTO DINÁMICO SEGÚN LA OPCIÓN
+    $AccionPendiente = if ($Opcion -eq "1") { "CONFIGURAR" } else { "FORMATEAR" }
+    Write-Host "`n🔍 MODO CENTINELA: Esperando a que $Cantidad equipos esten listos para $AccionPendiente..." -ForegroundColor Cyan
     
-    do {
-        $nmapOut = nmap -p 5555 --open -n -T5 192.168.10.200-250 -oG -
-        $ipsEncontradas = $nmapOut | Select-String "Host: (\d+\.\d+\.\d+\.\d+)" | ForEach-Object { $_.Matches.Groups[1].Value } | Where-Object { $_ -ne $miIP_Detectada }
+    # ----------------------------------------------------------------------
+    # FASE 1: BÚSQUEDA CONTINUA (Funciona para Opción 1 y Opción 2)
+    # ----------------------------------------------------------------------
+    $ipsEncontradas = @()
+    $intentos = 0
 
-        foreach ($ip in $ipsEncontradas) {
-            if ($ip -notin $tvboxes) {
-                $tvboxes += $ip
-                Write-Host "  -> ENCONTRADO: $ip" -ForegroundColor Green
+    while ($ipsEncontradas.Count -lt $Cantidad) {
+        $ScanPool = [runspacefactory]::CreateRunspacePool(1, 50)
+        $ScanPool.Open()
+        $ScanHilos = @()
+
+        foreach ($i in 200..250) {
+            $ipTest = "192.168.10.$i"
+            if ($ipTest -eq $miIP_Detectada -or $ipsEncontradas -contains $ipTest) { continue }
+
+            $ScanBlock = {
+                param($targetIp)
+                $socket = New-Object System.Net.Sockets.TcpClient
+                try {
+                    $connect = $socket.BeginConnect($targetIp, 5555, $null, $null)
+                    if ($connect.AsyncWaitHandle.WaitOne(800, $false) -and $socket.Connected) {
+                        $socket.Close()
+                        return $targetIp
+                    }
+                } catch {}
+                if ($socket) { $socket.Close(); $socket.Dispose() }
+                return $null
             }
-            if ($tvboxes.Count -ge $Cantidad) { break }
-        }
-        if ($tvboxes.Count -lt $Cantidad) { Start-Sleep -Seconds 1 }
-    } while ($tvboxes.Count -lt $Cantidad)
 
-    # 5. CONFIGURACIÓN Y LIMPIEZA EN PARALELO (MULTIHILO REAL)
-    Write-Host "`n🚀 Aplicando configuraciones a $($tvboxes.Count) equipos simultáneamente (Max: $MaxParalelo)..." -ForegroundColor Cyan
+            $PSInstance = [powershell]::Create().AddScript($ScanBlock).AddArgument($ipTest)
+            $PSInstance.RunspacePool = $ScanPool
+            $ScanHilos += [PSCustomObject]@{ Pipe = $PSInstance; Result = $PSInstance.BeginInvoke() }
+        }
+
+        foreach ($hilo in $ScanHilos) {
+            $res = $hilo.Pipe.EndInvoke($hilo.Result)
+            if ($res -and $ipsEncontradas.Count -lt $Cantidad) {
+                $ipsEncontradas += $res
+                Write-Host "  [+] ADB LISTO: $res ($($ipsEncontradas.Count)/$Cantidad)" -ForegroundColor Green
+                [System.Console]::Beep(800, 200)
+            }
+            $hilo.Pipe.Dispose()
+        }
+        $ScanPool.Close()
+        $ScanPool.Dispose()
+
+        if ($ipsEncontradas.Count -lt $Cantidad) {
+            $intentos++
+            $faltan = $Cantidad - $ipsEncontradas.Count
+            Write-Host "  ⏳ Faltan $faltan equipos. Buscando de nuevo... (Intento $intentos)" -ForegroundColor DarkGray
+            Start-Sleep -Seconds 2
+            
+            if ($intentos -ge 15) {
+                $forzar = Read-Host "`n⚠️ Han pasado 30s. ¿Forzar ejecución con los $($ipsEncontradas.Count) encontrados? (S/N)"
+                if ($forzar -match "S|s") { break }
+                $intentos = 0
+            }
+        }
+    }
+
+    $AccionTxt = if ($Opcion -eq "1") { "Configurando" } else { "Enviando Factory Reset a" }
+    Write-Host "`n🚀 $AccionTxt $($ipsEncontradas.Count) equipos simultáneamente..." -ForegroundColor Cyan
     
-    # Crear un Pool de hilos para ejecución simultánea real y ultrarrápida
+    # ----------------------------------------------------------------------
+    # FASE 2: EJECUCIÓN DE ADB
+    # ----------------------------------------------------------------------
     $RunspacePool = [runspacefactory]::CreateRunspacePool(1, $MaxParalelo)
     $RunspacePool.Open()
     $hilos = @()
 
-    foreach ($ip in $tvboxes) {
+    foreach ($ip in $ipsEncontradas) {
         $ScriptBlock = {
-            param($targetIp, $adbPath)
-            
-            $serial = "${targetIp}:5555"
-            $null = & $adbPath connect $serial 2>$null
+            param($targetIp, $pathADB, $modo)
+            try {
+                $serial = "${targetIp}:5555"
+                $null = & $pathADB connect $serial
+                Start-Sleep -Milliseconds 600
+                
+                $macRaw = & $pathADB -s $serial shell "cat /sys/class/net/eth0/address 2>/dev/null || cat /sys/class/net/wlan0/address 2>/dev/null"
+                $mac = if ($macRaw -match '([0-9A-F]{2}:){5}[0-9A-F]{2}') { $macRaw.Trim().ToUpper() } else { "MAC_DESCONOCIDA" }
 
-            # Extraer MAC (Prioridad eth0). Silencioso si falla.
-            $m = & $adbPath -s $serial shell "cat /sys/class/net/eth0/address 2>/dev/null || cat /sys/class/net/wlan0/address 2>/dev/null" 2>$null
-            
-            if ($m) {
-                $mac = $m.Trim().ToUpper()
-                
-                # --- COMANDOS DE CONFIGURACION ---
-                & $adbPath -s $serial shell "setprop persist.sys.language es" 2>$null
-                & $adbPath -s $serial shell "setprop persist.sys.country US" 2>$null
-                & $adbPath -s $serial shell "setprop persist.sys.timezone America/Bogota" 2>$null
-                & $adbPath -s $serial shell "settings put system system_locales es-US" 2>$null
-                
-                # --- LIMPIEZA DE APP SOMOS ---
-                $pkgs = & $adbPath -s $serial shell "pm list packages | grep somos" 2>$null
-                if ($pkgs) {
-                    foreach ($line in $pkgs) {
-                        $AppID = $line.Replace("package:", "").Trim()
-                        if ($AppID) {
-                            & $adbPath -s $serial shell "am force-stop $AppID; pm clear $AppID; pm uninstall --user 0 $AppID" >$null 2>&1
+                if ($modo -eq "1") {
+                    $cmds = @(
+                        "setprop persist.sys.language es",
+                        "setprop persist.sys.country US",
+                        "setprop persist.sys.timezone America/Bogota",
+                        "settings put system system_locales es-US",
+                        "settings put global wifi_on 0",
+                        "svc wifi disable"
+                    )
+                    foreach ($c in $cmds) { $null = & $pathADB -s $serial shell $c }
+
+                    $pkgs = & $pathADB -s $serial shell "pm list packages | grep somos"
+                    if ($pkgs) {
+                        foreach ($line in $pkgs) {
+                            $line = $line -replace "`r", ""
+                            if ($line -match "package:(.+)") {
+                                $appId = $matches[1].Trim()
+                                $null = & $pathADB -s $serial shell "am force-stop $appId"
+                                $null = & $pathADB -s $serial shell "pm clear $appId"
+                                $null = & $pathADB -s $serial shell "pm uninstall --user 0 $appId"
+                            }
                         }
                     }
+
+                    Start-Sleep -Milliseconds 500
+                    $null = & $pathADB -s $serial shell reboot
+                    return "OK|$targetIp|$mac"
+                } 
+                else {
+                    $resetCmd = "am broadcast -a android.intent.action.MASTER_CLEAR -p android --receiver-foreground"
+                    $null = & $pathADB -s $serial shell "su 0 $resetCmd || $resetCmd"
+                    return "RESET|$targetIp|$mac"
                 }
 
-                # --- DESACTIVAR WIFI ---
-                & $adbPath -s $serial shell "svc wifi disable" 2>$null
-                & $adbPath -s $serial shell "settings put global wifi_on 0" 2>$null
-                & $adbPath -s $serial shell "settings put global wifi_scan_always_enabled 0" 2>$null
-                
-                Start-Sleep -Milliseconds 500
-                & $adbPath -s $serial shell "reboot" 2>$null
-                
-                return [PSCustomObject]@{ Status = 'OK'; IP = $targetIp; MAC = $mac }
+            } catch {
+                return "EXCEPTION|$targetIp|$($_.Exception.Message)"
             }
-            return [PSCustomObject]@{ Status = 'FAIL'; IP = $targetIp; MAC = $null }
         }
 
-        # Configurar el hilo con sus variables (se inyectan $ip y $adbExe)
-        $PSInstance = [powershell]::Create().AddScript($ScriptBlock).AddArgument($ip).AddArgument($adbExe)
+        $PSInstance = [powershell]::Create().AddScript($ScriptBlock).AddArgument($ip).AddArgument($adbExe).AddArgument($Opcion)
         $PSInstance.RunspacePool = $RunspacePool
-
-        # Iniciar el hilo inmediatamente y guardarlo para recolectar el resultado luego
-        $hilos += [PSCustomObject]@{
-            Pipe   = $PSInstance
-            Result = $PSInstance.BeginInvoke()
-        }
+        $hilos += [PSCustomObject]@{ Pipe = $PSInstance; Result = $PSInstance.BeginInvoke() }
     }
 
-    # Esperar a que terminen y recolectar resultados de la estación
     $macsFinales = @()
     foreach ($hilo in $hilos) {
-        # EndInvoke bloquea hasta que este hilo específico termine
-        $res = $hilo.Pipe.EndInvoke($hilo.Result)
-        $hilo.Pipe.Dispose() # Limpiar memoria usada por el hilo
+        $output = $hilo.Pipe.EndInvoke($hilo.Result)
+        $data = $output -split '\|'
         
-        if ($res.Status -eq 'OK') {
-            Write-Host "  [OK] $($res.IP) - $($res.MAC) (Configurado)" -ForegroundColor Green
-            $macsFinales += $res.MAC
+        if ($data[0] -eq 'OK') {
+            Write-Host "  [OK - CONFIGURADO] $($data[1]) -> $($data[2])" -ForegroundColor Green
+            $macsFinales += $data[2]
+        } elseif ($data[0] -eq 'RESET') {
+            Write-Host "  [⚠️ EN RESET] $($data[1]) -> $($data[2]) (El equipo se reiniciara)" -ForegroundColor Yellow
+        } else {
+            Write-Host "  [X] $($data[1]) -> Fallo" -ForegroundColor Red
         }
+        $hilo.Pipe.Dispose()
     }
-    
-    # Cerrar el pool de hilos
     $RunspacePool.Close()
-    $RunspacePool.Dispose()
 
-    # 6. REPORTE Y FINALIZACIÓN
-    if ($macsFinales.Count -gt 0) {
+    if ($Opcion -eq "1" -and $macsFinales.Count -gt 0) {
         $macsFinales | Out-File -FilePath $ArchivoMAC -Encoding UTF8
         $macsFinales | ForEach-Object { "$(Get-Date -Format 'HH:mm') | $_" } | Out-File -FilePath $ArchivoBackup -Append
         
-        Write-Host "`n[LISTO] Reporte generado para $($macsFinales.Count) equipos." -ForegroundColor Green
+        Write-Host "`n✅ Reporte generado exitosamente." -ForegroundColor Green
         Start-Process notepad.exe $ArchivoMAC
-        [System.Console]::Beep(523, 200)
-    }
-    else {
-        Write-Host "`n[AVISO] No se configuró exitosamente ningún equipo en este lote o no hubo conexión ADB." -ForegroundColor Yellow
+        [System.Console]::Beep(523, 300)
+    } elseif ($Opcion -eq "2") {
+        Write-Host "`n✅ Comandos de Factory Reset enviados. Espera a que los equipos inicien." -ForegroundColor Green
+        [System.Console]::Beep(440, 400)
     }
 
-    $ask = Read-Host "`n¿Siguiente lote? (S/N)"
-    if ($ask -notmatch "S|s") { break }
+    if ((Read-Host "`n¿Siguiente lote o volver al menu? (S para continuar)") -notmatch "S|s") { break }
 }
