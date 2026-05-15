@@ -1,5 +1,5 @@
 ﻿# ==============================================================================
-# ESTACIÓN DE TRABAJO CUERVO - V2.17 (VERSIÓN GOLD - CENTINELA GLOBAL)
+# ESTACIÓN DE TRABAJO CUERVO - V2.20 (BORRADO QUIRÚRGICO DE ORIGEN)
 # ==============================================================================
 
 $scriptDir = $PSScriptRoot
@@ -13,7 +13,6 @@ if (-not (Test-Path $adbExe)) {
     pause; exit 
 }
 
-# 1. DETECTAR MI IP ACTUAL AUTOMÁTICAMENTE
 $miIP_Detectada = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { 
     $_.InterfaceAlias -notlike "*Wi-Fi*" -and 
     $_.InterfaceAlias -notlike "*vEthernet*" -and 
@@ -25,7 +24,7 @@ if (-not $miIP_Detectada) { $miIP_Detectada = "0.0.0.0" }
 while ($true) {
     Clear-Host
     Write-Host "========================================" -ForegroundColor Magenta
-    Write-Host "    ESTACION DE TRABAJO CUERVO - V2.17  " -ForegroundColor Magenta
+    Write-Host "    ESTACION DE TRABAJO CUERVO - V2.20  " -ForegroundColor Magenta
     Write-Host "    IP PC: $miIP_Detectada | DHCP: .200-.250 " -ForegroundColor Gray
     Write-Host "========================================" -ForegroundColor Magenta
     Write-Host " 1. Configurar y Limpiar App SOMOS" -ForegroundColor Cyan
@@ -44,13 +43,9 @@ while ($true) {
     & $adbExe kill-server 2>$null
     & $adbExe start-server 2>$null
 
-    # TEXTO DINÁMICO SEGÚN LA OPCIÓN
     $AccionPendiente = if ($Opcion -eq "1") { "CONFIGURAR" } else { "FORMATEAR" }
     Write-Host "`n🔍 MODO CENTINELA: Esperando a que $Cantidad equipos esten listos para $AccionPendiente..." -ForegroundColor Cyan
     
-    # ----------------------------------------------------------------------
-    # FASE 1: BÚSQUEDA CONTINUA (Funciona para Opción 1 y Opción 2)
-    # ----------------------------------------------------------------------
     $ipsEncontradas = @()
     $intentos = 0
 
@@ -111,9 +106,6 @@ while ($true) {
     $AccionTxt = if ($Opcion -eq "1") { "Configurando" } else { "Enviando Factory Reset a" }
     Write-Host "`n🚀 $AccionTxt $($ipsEncontradas.Count) equipos simultáneamente..." -ForegroundColor Cyan
     
-    # ----------------------------------------------------------------------
-    # FASE 2: EJECUCIÓN DE ADB
-    # ----------------------------------------------------------------------
     $RunspacePool = [runspacefactory]::CreateRunspacePool(1, $MaxParalelo)
     $RunspacePool.Open()
     $hilos = @()
@@ -130,6 +122,17 @@ while ($true) {
                 $mac = if ($macRaw -match '([0-9A-F]{2}:){5}[0-9A-F]{2}') { $macRaw.Trim().ToUpper() } else { "MAC_DESCONOCIDA" }
 
                 if ($modo -eq "1") {
+                    # ==========================================================
+                    # 1. DESTRUCCIÓN QUIRÚRGICA DEL ORIGEN
+                    # ==========================================================
+                    # Remontamos en lectura/escritura y borramos SOLO los APKs de Somos
+                    $null = & $pathADB -s $serial shell "su 0 mount -o rw,remount /"
+                    $null = & $pathADB -s $serial shell "su 0 rm -f /system/preinstall/*omos*.apk"
+                    $null = & $pathADB -s $serial shell "su 0 rm -f /system/preinstall/*OMOS*.apk"
+
+                    # ==========================================================
+                    # 2. CONFIGURACIÓN DEL SISTEMA
+                    # ==========================================================
                     $cmds = @(
                         "setprop persist.sys.language es",
                         "setprop persist.sys.country US",
@@ -140,7 +143,11 @@ while ($true) {
                     )
                     foreach ($c in $cmds) { $null = & $pathADB -s $serial shell $c }
 
-                    $pkgs = & $pathADB -s $serial shell "pm list packages | grep somos"
+                    # ==========================================================
+                    # 3. LIMPIEZA DE LA APP ACTIVA (Si ya se instaló en el usuario)
+                    # ==========================================================
+                    # Se agregó "-i" al grep por si aparece como SomosTV
+                    $pkgs = & $pathADB -s $serial shell "pm list packages | grep -i somos"
                     if ($pkgs) {
                         foreach ($line in $pkgs) {
                             $line = $line -replace "`r", ""
