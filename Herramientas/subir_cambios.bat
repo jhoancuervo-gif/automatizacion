@@ -1,6 +1,6 @@
 @echo off
 setlocal
-cd /d "%~dp0"
+cd /d "%~dp0.."
 title ENVIAR MEJORAS A GITHUB
 
 echo ===========================================

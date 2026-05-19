@@ -38,7 +38,7 @@ try {
 
     # 2. ENTORNO VIRTUAL
     Write-Host "`n[2/6] Verificando entorno virtual..." -ForegroundColor Yellow
-    $venvPath = Join-Path $PSScriptRoot ".venv"
+    $venvPath = Join-Path (Split-Path $PSScriptRoot -Parent) ".venv"
     $pythonVenv = Join-Path $venvPath "Scripts\python.exe"
     
     if (-Not (Test-Path $venvPath)) {
