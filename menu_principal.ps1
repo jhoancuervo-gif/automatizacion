@@ -120,7 +120,7 @@ do {
     switch ($opcion) {
         "1" { Ejecutar-Herramienta "scripts_poe_1gb" "iniciarfirmPOE.ps1" }
         "2" { Ejecutar-Herramienta "scripts_poe_2_5gb" "iniciarfirmPOE2.5.ps1" }
-        "3" { $f = Join-Path $RootPath "Herramientas\check_puerto_poe.ps1"; if (Test-Path $f) { & $f } else { Write-Host "Error"; Pause } }
+        "3" { $f = Join-Path $RootPath "check_puerto_poe.ps1"; if (Test-Path $f) { & $f } else { Write-Host "Error"; Pause } }
         "4" { Ejecutar-Herramienta "scripts_phantom_f2_reintegro" "menu_phantomf2.ps1" }
         "5" { Ejecutar-Herramienta "scripts_phantom_f2" "menu_phantomf2nuevos.ps1" }
         "6" { Ejecutar-Herramienta "scripts_phantom_nuevos" "menu_phantom_nuevos.ps1" }
@@ -128,7 +128,7 @@ do {
         "8" { Ejecutar-Herramienta "scripts_orbes_nuevas" "menu_orbes_nuevas.ps1" }
         "9" { Ejecutar-Herramienta "scripts_orbe_reintegro" "menu_orbes_rein.ps1" }
         "10" { Ejecutar-Herramienta "configurartvbox_sinapp" "configurar_sinapp.bat" }
-        "11" { $L = Join-Path $RootPath "Herramientas\lanzador.bat"; if (Test-Path $L) { Start-Process "$L" -Wait } else { Write-Host "No se encuentra lanzador.bat"; Pause } }
+        "11" { $L = Join-Path $RootPath "lanzador.bat"; if (Test-Path $L) { Start-Process "$L" -Wait } else { Write-Host "No se encuentra lanzador.bat"; Pause } }
         "12" { $R = Join-Path $RootPath "core\reparar_red.ps1"; if (Test-Path $R) { & $R } else { Write-Host "Error"; Pause } }
         "0" { exit }
     }
