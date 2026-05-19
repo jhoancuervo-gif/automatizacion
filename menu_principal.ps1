@@ -37,7 +37,7 @@ $EquipoMapeo = @{
     "USUARIO-IO29QUF" = "FlechasJuan"
     "DESKTOP-5FNCEON" = "Yeison"
     "WINDOWS-OBOHUKI" = "Santiago"
-    
+    "MPC-A5584AEIOOK" = "Oscar"
 }
 $script:NombreVisual = $env:COMPUTERNAME
 if ($EquipoMapeo.ContainsKey($env:COMPUTERNAME)) {

@@ -20,6 +20,8 @@ EQUIPO_MAPEO = {
     "DESKTOP-R1IDN86": "Paula Andrea",
     "MPC-71225UVI7HG": "Bryan",
     "USUARIO-IO29QUF": "FlechasJuan",
+    "DESKTOP-5FNCEON": "Yeison",
+    "WINDOWS-OBOHUKI": "Santiago",
     "MPC-A5584AEIOOK": "Oscar"
 }
 

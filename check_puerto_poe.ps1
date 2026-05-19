@@ -18,7 +18,7 @@ $Exit = "$([char]0x274C)"; $Gear = "$([char]0x2699)"
 $M = "Magenta"; $W = "White"; $C = "Cyan"; $Y = "Yellow"; $G = "Green"; $R = "Red"; $B = "DarkBlue"
 
 # Cachear Hostname y mapeo
-$EquipoMapeo = @{ "MPC-1OCAK8IK9CP" = "Rey"; "DESKTOP-PT8UMBI" = "Cuervonv"; "ALVARO" = "Alvaro"; "DESKTOP-4D3P5N2" = "Esteban"; "MPC-17KT4458H7R" = "Kevin"; "DESKTOP-7D3G6V0" = "Felipe"; "DESKTOP-R1IDN86" = "Paula Andrea"; "MPC-71225UVI7HG" = "Bryan"; "USUARIO-IO29QUF" = "FlechasJuan" }
+$EquipoMapeo = @{ "MPC-1OCAK8IK9CP" = "Rey"; "DESKTOP-PT8UMBI" = "Cuervonv"; "ALVARO" = "Alvaro"; "DESKTOP-4D3P5N2" = "Esteban"; "MPC-17KT4458H7R" = "Kevin"; "DESKTOP-7D3G6V0" = "Felipe"; "DESKTOP-R1IDN86" = "Paula Andrea"; "MPC-71225UVI7HG" = "Bryan"; "USUARIO-IO29QUF" = "FlechasJuan"; "DESKTOP-5FNCEON" = "Yeison"; "WINDOWS-OBOHUKI" = "Santiago"; "MPC-A5584AEIOOK" = "Oscar" }
 $script:NombreVisual = if ($EquipoMapeo.ContainsKey($env:COMPUTERNAME)) { $EquipoMapeo[$env:COMPUTERNAME] } else { $env:COMPUTERNAME }
 
 function Get-AdapterIP {
