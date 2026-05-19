@@ -76,8 +76,8 @@ async def process_device(ip, retries=3):
             )
 
             async with asyncssh.connect(ip, username='root', password=Config.SSH_PASSWORD, options=options) as conn:
-                # 1. Extraer MAC
-                result = await conn.run("uci show network.@device[1].macaddr", check=True)
+                # 1. Extraer MAC y verificar espacio en un solo comando para ahorrar latencia
+                result = await conn.run("uci show network.@device[1].macaddr; echo '---'; df -k /tmp", check=True)
                 mac_match = re.search(r"macaddr='([0-9a-fA-F:]{17})'", result.stdout)
 
                 if mac_match:
@@ -98,10 +98,11 @@ async def process_device(ip, retries=3):
                         for m in sesion_actual:
                             f.write(f"{m}\n")
 
-                    # 2. Verificar espacio en /tmp
-                    df_res = await conn.run("df -k /tmp")
+                    # 2. Verificar espacio en /tmp (ya descargado en el paso 1)
                     try:
-                        lines = df_res.stdout.splitlines()
+                        # Extraemos la parte de df del output conjunto
+                        df_output = result.stdout.split('---')[1].strip() if '---' in result.stdout else ""
+                        lines = df_output.splitlines()
                         if len(lines) > 1:
                             parts = lines[1].split()
                             available_kb = int(parts[3])
@@ -145,7 +146,7 @@ async def process_device(ip, retries=3):
                     return "OK", mac
         except (asyncssh.Error, OSError) as e:
             if intento < retries:
-                await asyncio.sleep(2)
+                await asyncio.sleep(1)
             else:
                 return "SIN_CONEXION", None
     return "SIN_CONEXION", None
@@ -193,14 +194,14 @@ async def main():
                 print(f"\n✅ Equipo #{len(sesion_actual)} finalizado correctamente.")
                 if len(sesion_actual) < meta:
                     print(f"🔔 CAMBIE EL EQUIPO...")
-                    # Tiempo para que el usuario desconecte y el puerto se limpie
-                    await asyncio.sleep(10)
+                    # Tiempo reducido: espera breve para limpiar puerto, la validación inteligente hará el resto
+                    await asyncio.sleep(2)
 
             elif estado == "ESPERANDO_DESCONEXION":
-                await asyncio.sleep(2)
-            else:
-                # Reintento de ciclo de escaneo
                 await asyncio.sleep(1)
+            else:
+                # Reintento de ciclo de escaneo mucho más rápido para polling agresivo
+                await asyncio.sleep(0.5)
 
         print(f"\n\n==========================================")
         print(f"🎉 ¡PROCESO COMPLETADO! {meta}/{meta} equipos listos.")

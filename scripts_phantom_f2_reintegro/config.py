@@ -27,7 +27,7 @@ class Config:
     IP_START = int(os.getenv("IP_START", "212"))
     IP_END = int(os.getenv("IP_END", "215"))
     SSH_PASSWORD = os.getenv("SSH_PASSWORD", "M7h$)Fw3|;63*h?ET")
-    FIRMWARE_PATH = CURRENT_DIR / "Firmware_PHANTOM-F2.bin"
+    FIRMWARE_PATH = CURRENT_DIR / "somos-openwrt-24.10.5-somosfw-mediatek-filogic-somos_phantomf2.bin"
     WEBHOOK_URL = os.getenv("WEBHOOK_URL", "")
 
 class PortalConfig:

@@ -118,7 +118,7 @@ async def process_device(ip, semaphore):
                     mac = mac_match.group(1).upper()
 
                     # Subir Firmware
-                    await asyncssh.scp(str(Config.FIRMWARE_PATH), (conn, '/tmp/Firmware_PHANTOM-F2.bin'))
+                    await asyncssh.scp(str(Config.FIRMWARE_PATH), (conn, '/tmp/somos-openwrt-24.10.5-somosfw-mediatek-filogic-somos_phantomf2.bin'))
 
                     # --- LÓGICA DE GUARDADO CON LOCK ---
                     async with file_lock:
@@ -141,7 +141,7 @@ async def process_device(ip, semaphore):
 
                     try:
                         # Usamos run sin esperar el cierre total ya que el reboot corta la conexión
-                        await conn.run("sysupgrade -n /tmp/Firmware_PHANTOM-F2.bin", timeout=5)
+                        await conn.run("sysupgrade -n /tmp/somos-openwrt-24.10.5-somosfw-mediatek-filogic-somos_phantomf2.bin", timeout=5)
                     except:
                         pass
 
