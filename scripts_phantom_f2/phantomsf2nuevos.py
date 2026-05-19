@@ -28,7 +28,7 @@ EQUIPO_MAPEO = {
 
 def get_alias():
     """Obtiene el nombre mapeado del equipo actual"""
-    hostname = os.getenv('COMPUTERNAME', 'Desconocido')
+    hostname = os.getenv('COMPUTERNAME', 'Desconocido').upper()
     return EQUIPO_MAPEO.get(hostname, hostname)
 
 def send_webhook(macs, meta):
