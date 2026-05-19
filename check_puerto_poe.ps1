@@ -39,6 +39,61 @@ function Mostrar-Encabezado {
     Write-Host "  IP: $($ipStr.PadRight(15)) | HOST: $($script:NombreVisual.PadRight(15)) | $Fecha" -ForegroundColor $C
 }
 
+function Read-InputWithTimeout {
+    param(
+        [int]$TimeoutSeconds = 5,
+        [string]$InitialInput = ""
+    )
+    
+    $inputBuffer = $InitialInput
+    if ($inputBuffer -ne "") {
+        Write-Host -NoNewline $inputBuffer
+    }
+    
+    $start = [DateTime]::Now
+    
+    while ($true) {
+        if (([DateTime]::Now - $start).TotalSeconds -ge $TimeoutSeconds) {
+            return @{ "Status" = "Timeout"; "Value" = $inputBuffer }
+        }
+        
+        $keyAvailable = $false
+        $hasConsole = $true
+        try {
+            $keyAvailable = [console]::KeyAvailable
+        } catch {
+            $hasConsole = $false
+        }
+        
+        if (-not $hasConsole) {
+            $val = Read-Host
+            return @{ "Status" = "Submit"; "Value" = $val }
+        }
+        
+        if ($keyAvailable) {
+            $key = [console]::ReadKey($true)
+            
+            if ($key.Key -eq 'Enter') {
+                Write-Host ""
+                return @{ "Status" = "Submit"; "Value" = $inputBuffer }
+            }
+            elseif ($key.Key -eq 'Backspace') {
+                if ($inputBuffer.Length -gt 0) {
+                    $inputBuffer = $inputBuffer.Substring(0, $inputBuffer.Length - 1)
+                    Write-Host -NoNewline "`b `b"
+                }
+            }
+            elseif ($key.KeyChar -ge 32 -and $key.KeyChar -le 126) {
+                $inputBuffer += $key.KeyChar
+                Write-Host -NoNewline $key.KeyChar
+            }
+        }
+        
+        Start-Sleep -Milliseconds 50
+    }
+}
+
+$currentSelection = ""
 while ($true) {
     Clear-Host
     Mostrar-Encabezado
@@ -89,10 +144,19 @@ while ($true) {
     Write-Host ""
     Write-Host "  >> Seleccione un ID: " -NoNewline -ForegroundColor $W
     
-    $selection = Read-Host
+    $readResult = Read-InputWithTimeout -TimeoutSeconds 5 -InitialInput $currentSelection
+    $currentSelection = $readResult.Value
+    
+    if ($readResult.Status -eq "Timeout") {
+        continue
+    }
+    
+    $selection = $currentSelection
+    $currentSelection = "" # Restablecer para la proxima vez
+    
     if ($selection -eq "0") { exit }
     if (-not $selectionMap.ContainsKey($selection)) {
-        Write-Host "`n  [!] ID '$selection' no valido." -ForegroundColor $R
+        Write-Host "  [!] ID '$selection' no valido." -ForegroundColor $R
         Start-Sleep -Seconds 1
         continue
     }

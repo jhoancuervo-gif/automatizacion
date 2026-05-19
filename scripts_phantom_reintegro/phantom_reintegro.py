@@ -127,7 +127,7 @@ async def process_device(ip, semaphore):
                         # 1. Guardar en BACKUP (Historial completo)
                         ruta_backup = Config.BACKUP_DIR / "Macs_phantom_reintegro.txt"
                         with open(ruta_backup, "a", encoding="utf-8") as f:
-                            f.write(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | {mac}\n")
+                            f.write(f"{datetime.now().strftime('%H:%M')} | {mac}\n")
                         
                         # 2. Actualizar lista de sesión
                         sesion_actual.append(mac)
