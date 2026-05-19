@@ -19,7 +19,8 @@ EQUIPO_MAPEO = {
     "DESKTOP-7D3G6V0": "Felipe",
     "DESKTOP-R1IDN86": "Paula Andrea",
     "MPC-71225UVI7HG": "Bryan",
-    "USUARIO-IO29QUF": "FlechasJuan"
+    "USUARIO-IO29QUF": "FlechasJuan",
+    "MPC-A5584AEIOOK": "Oscar"
 }
 
 def get_alias():
@@ -62,44 +63,64 @@ print_lock = asyncio.Lock()
 file_lock = asyncio.Lock()
 
 
-async def scan_network():
-    """Escanea la red buscando dispositivos con el puerto 22 abierto (SSH)."""
-    # Escaneo de toda la red /24
-    target = f"{Config.IP_BASE}0/24" if Config.IP_BASE.endswith('.') else f"{Config.IP_BASE}.0/24"
+async def check_port(ip, port, timeout=0.8):
+    try:
+        reader, writer = await asyncio.wait_for(asyncio.open_connection(ip, port), timeout=timeout)
+        writer.close()
+        await writer.wait_closed()
+        return ip
+    except:
+        return None
+
+async def scan_network(cantidad):
+    """Escanea la red buscando dispositivos con el puerto 22 abierto (SSH), de forma similar a PS1."""
+    ips_encontradas = set()
+    intentos = 0
+    
+    # Detectar IP local para omitirla
+    hostname = socket.gethostname()
+    try:
+        local_ips = socket.gethostbyname_ex(hostname)[2]
+    except Exception:
+        local_ips = []
+        
+    base_ip = Config.IP_BASE if Config.IP_BASE.endswith('.') else f"{Config.IP_BASE}."
     
     async with print_lock:
-        print(f"🔍 Escaneando red {target} en busca de equipos (Puerto 22)...")
-    
-    try:
-        # Detectar IPs locales del PC para omitirlas
-        hostname = socket.gethostname()
-        local_ips = socket.gethostbyname_ex(hostname)[2]
+        print(f"\n🔍 MODO CENTINELA: Esperando a que {cantidad} equipos estén listos para Flashear...")
         
-        process = await asyncio.create_subprocess_exec(
-            'nmap', '-p', '22', '--open', '-n', '-T5', target, '-oG', '-',
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
-        )
-        stdout, _ = await process.communicate()
+    while len(ips_encontradas) < cantidad:
+        tasks = []
+        # Rango de 200 a 250 igual que en PS1
+        for i in range(200, 251):
+            ip = f"{base_ip}{i}"
+            if ip in local_ips or ip in ips_encontradas:
+                continue
+            tasks.append(check_port(ip, 22))
+            
+        resultados = await asyncio.gather(*tasks)
+        nuevas_ips = [res for res in resultados if res]
         
-        output = stdout.decode()
-        # Solo capturar IPs que tienen el puerto open
-        ips_encontradas = list(set(re.findall(r"Host: (\d+\.\d+\.\d+\.\d+).*Ports:.*22/open", output)))
-        
-        # Filtrar la IP propia del PC
-        ips = [ip for ip in ips_encontradas if ip not in local_ips]
-        
-        # Informar qué IPs se omitieron si se encontraron
-        omitted = [ip for ip in ips_encontradas if ip in local_ips]
-        if omitted:
+        for ip in nuevas_ips:
+            ips_encontradas.add(ip)
             async with print_lock:
-                print(f"ℹ️ Omitiendo IP local del PC: {', '.join(omitted)}")
+                print(f"  [+] SSH LISTO: {ip} ({len(ips_encontradas)}/{cantidad})")
                 
-        return ips
-    except Exception as e:
-        async with print_lock:
-            print(f"❌ Error durante el escaneo: {e}")
-        return []
+        if len(ips_encontradas) < cantidad:
+            intentos += 1
+            faltan = cantidad - len(ips_encontradas)
+            async with print_lock:
+                print(f"  ⏳ Faltan {faltan} equipos. Buscando de nuevo... (Intento {intentos})")
+            await asyncio.sleep(2)
+            
+            if intentos >= 15:
+                # Prompt bloqueante en la consola
+                forzar = input(f"\n⚠️ Han pasado 30s. ¿Forzar ejecución con los {len(ips_encontradas)} encontrados? (S/N): ")
+                if forzar.strip().lower() == 's':
+                    break
+                intentos = 0
+                
+    return list(ips_encontradas)
 
 
 async def process_device(ip, semaphore):
@@ -166,16 +187,21 @@ async def main():
     if Config.MAC_FILE.exists():
         open(Config.MAC_FILE, 'w').close()
 
+    try:
+        cantidad_input = input("¿Equipos para este lote?: ")
+        cantidad = int(cantidad_input)
+    except ValueError:
+        cantidad = 1
+
     # ESCANEO DINÁMICO
-    ips = await scan_network()
+    ips = await scan_network(cantidad)
 
     if not ips:
         print("❌ No se encontraron equipos activos en la red.")
         input("\nPresione ENTER para salir...")
         return
 
-    print(f"✅ Se encontraron {len(ips)} equipos.")
-    input(f"\n[!] Presione ENTER para iniciar el procesamiento en paralelo...")
+    print(f"\n🚀 Iniciando procesamiento de {len(ips)} equipos simultáneamente...")
 
     # PROCESAMIENTO EN PARALELO
     semaphore = asyncio.Semaphore(30)

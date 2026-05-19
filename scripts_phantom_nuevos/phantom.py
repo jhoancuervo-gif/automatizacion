@@ -18,7 +18,8 @@ EQUIPO_MAPEO = {
     "DESKTOP-7D3G6V0": "Felipe",
     "DESKTOP-R1IDN86": "Paula Andrea",
     "MPC-71225UVI7HG": "Bryan",
-    "USUARIO-IO29QUF": "FlechasJuan"
+    "USUARIO-IO29QUF": "FlechasJuan",
+    "MPC-A5584AEIOOK": "Oscar"
 }
 
 def get_alias():
