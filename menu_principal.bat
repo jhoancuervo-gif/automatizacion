@@ -4,7 +4,8 @@ cd /d "%~dp0"
 title SISTEMA DE AUTOMATIZACION - CUERVO
 
 echo [1/3] Sincronizando con GitHub...
-git pull origin main --quiet
+git fetch origin --quiet
+git reset --hard origin/main --quiet
 
 echo [2/3] Ejecutando diagnostico de salud...
 powershell -ExecutionPolicy Bypass -File "core\system_doctor.ps1"
