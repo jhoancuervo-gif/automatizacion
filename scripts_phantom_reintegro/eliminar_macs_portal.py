@@ -70,9 +70,6 @@ def read_and_clean_macs():
                     unique_macs.append(mac)
 
         if unique_macs:
-            backup_path = f"{MAC_FILE_PATH}.backup.{int(time.time())}"
-            shutil.copy(MAC_FILE_PATH, backup_path)
-            print(f"📦 Backup creado: {backup_path}")
             print(f"📊 Total MACs únicas detectadas en el archivo: {len(unique_macs)}")
 
         return unique_macs
@@ -276,7 +273,6 @@ def main():
     print(f"\n⚡ Iniciando procesamiento en paralelo ({MAX_WORKERS} hilos simultáneos)...")
     print("Por favor espera, los resultados irán apareciendo...\n")
 
-    macs_para_mantener_en_archivo = []
     exitos = errores = no_encontradas = 0
     total_macs = len(macs)
 
@@ -295,29 +291,15 @@ def main():
                 exitos += 1
             elif status == "NOT_FOUND":
                 no_encontradas += 1
-                macs_para_mantener_en_archivo.append(mac)
             else:
                 errores += 1
-                macs_para_mantener_en_archivo.append(mac)
-
-    # REESCRIBIR ARCHIVO LIMPIO
-    try:
-        with open(MAC_FILE_PATH, 'w', encoding='utf-8') as file:
-            for mac in macs_para_mantener_en_archivo:
-                file.write(f"{mac}\n")
-        
-        print("\n" + "=" * 60)
-        print("💾 ARCHIVO MACS.TXT ACTUALIZADO (SÓLO EQUIPOS PENDIENTES/FALLIDOS)")
-        print("=" * 60)
-    except Exception as e:
-        print(f"❌ Error al limpiar el archivo macs.txt: {e}")
 
     # RESUMEN FINAL
     print(f"\n📊 RESUMEN DE LA EJECUCIÓN:")
     print(f"   Total evaluadas: {total_macs}")
-    print(f"   ✅ Eliminadas con éxito (Borradas del archivo): {exitos}")
-    print(f"   ❌ Errores detectados (Se mantienen en el archivo): {errores}")
-    print(f"   🔍 No encontradas en el portal (Se mantienen en el archivo): {no_encontradas}")
+    print(f"   ✅ Eliminadas con éxito: {exitos}")
+    print(f"   ❌ Errores detectados: {errores}")
+    print(f"   🔍 No encontradas en el portal: {no_encontradas}")
     print("=" * 60)
 
     input("\nPresione una tecla para finalizar...")
