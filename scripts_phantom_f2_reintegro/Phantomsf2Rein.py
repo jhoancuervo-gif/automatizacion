@@ -10,6 +10,12 @@ import urllib.request
 from datetime import datetime
 from config import Config
 
+import sys as _sys
+_sys.path.insert(0, str(Config.BASE_DIR / "core"))
+from mac_backup import MacBackup
+
+_mac_backup = None
+
 EQUIPO_MAPEO = {
     "MPC-1OCAK8IK9CP": "Rey",
     "DESKTOP-PT8UMBI": "Cuervonv",
@@ -147,15 +153,11 @@ async def process_device(ip, semaphore):
 
                     # --- LÓGICA DE GUARDADO CON LOCK ---
                     async with file_lock:
-                        # 1. Guardar en BACKUP (Historial completo)
-                        ruta_backup = Config.BACKUP_DIR / "Macs_phantom_reintegrof2.txt"
-                        with open(ruta_backup, "a", encoding="utf-8") as f:
-                            f.write(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | {mac}\n")
-
-                        # 2. Actualizar lista de sesión
                         sesion_actual.append(mac)
+                        if _mac_backup:
+                            _mac_backup.save(mac)
 
-                        # 3. Escribir en la RAÍZ (macs.txt) - Sobrescribe con lo actual
+                        # Escribir en la RAÍZ (macs.txt) - Sobrescribe con lo actual
                         with open(Config.MAC_FILE, "w", encoding="utf-8") as f:
                             for m in sesion_actual:
                                 f.write(f"{m}\n")
@@ -185,6 +187,9 @@ async def process_device(ip, semaphore):
 
 
 async def main():
+    global _mac_backup
+    _mac_backup = MacBackup(Config.CURRENT_DIR, "PHANTOM_F2_REINTEGRO", mac_file=Config.MAC_FILE)
+
     print(f"\n🚀 PHANTOM REINTEGRO - MOTOR ULTRA-RÁPIDO (PARALELO)")
 
     # LIMPIEZA DE ARRANQUE: Asegura que el archivo de la raíz empiece vacío
@@ -215,8 +220,9 @@ async def main():
 
     if sesion_actual:
         print(f"\n✨ Proceso terminado. {len(sesion_actual)} MACs listas en la raíz.")
-        # Enviar notificación final
         send_webhook(sesion_actual)
+        if _mac_backup:
+            _mac_backup.export_session()
     else:
         print(f"\n⚠️ No se procesó ninguna MAC correctamente.")
 

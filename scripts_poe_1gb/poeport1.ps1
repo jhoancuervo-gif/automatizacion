@@ -4,10 +4,10 @@
 
 $currentDir = $PSScriptRoot
 $rootDir    = Split-Path -Parent $currentDir
-$backupDir  = Join-Path $rootDir "backups_macs"
+. (Join-Path $rootDir "core\mac_backup.ps1")
+Initialize-MacBackup -ScriptDir $currentDir -Familia "POE_1GB_SNMP_8P"
 
 $configFile = Join-Path $currentDir "Configmanage.bin"
-$macFile    = Join-Path $currentDir "mac.txt"
 
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
@@ -63,14 +63,7 @@ do {
         Write-Host " [REINICIANDO... OK]" -ForegroundColor Cyan
     }
 
-    # --- GUARDADO DE LOGS ---
-    if ($macResult) {
-        $macResult | Add-Content -Path $macFile
-        if (-not (Test-Path $backupDir)) { New-Item -ItemType Directory -Path $backupDir | Out-Null }
-        $fecha = Get-Date -Format "yyyy-MM-dd"
-        $historial = Join-Path $backupDir "poe_8port_snmp_$fecha.txt"
-        Add-Content -Path $historial -Value "$(Get-Date -Format 'HH:mm:ss') | SNMP_8P | $macResult" -Encoding UTF8
-    }
+    if ($macResult) { Save-MacBackup -Mac $macResult }
 
     Write-Host "========================================" -ForegroundColor Cyan
     Write-Host "FINALIZADO CON ÉXITO: $macResult" -ForegroundColor Green
@@ -78,3 +71,5 @@ do {
 
     $next = Read-Host "Presione ENTER para el siguiente switch / 'S' para salir"
 } while ($next -ne "s")
+
+Export-MacBackupSession

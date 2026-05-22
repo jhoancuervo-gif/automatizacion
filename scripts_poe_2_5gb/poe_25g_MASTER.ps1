@@ -5,17 +5,12 @@
 
 # --- RUTAS AUTOMÁTICAS ---
 if ($PSScriptRoot) { $baseDir = $PSScriptRoot } else { $baseDir = Get-Location }
+$rootDir = Split-Path -Parent $baseDir
+. (Join-Path $rootDir "core\mac_backup.ps1")
+Initialize-MacBackup -ScriptDir $baseDir -Familia "POE_2_5GB_FLASH"
 
 $fwFile     = "$baseDir\upg_appimage2.bin"
 $configFile = "$baseDir\Configmanage2.bin"
-$macFile    = "$baseDir\mac.txt"
-
-# --- VERIFICACIÓN DE SEGURIDAD ---
-# 1. Si no existe mac.txt, LO CREA automáticamente
-if (-not (Test-Path $macFile)) { 
-    New-Item -Path $macFile -ItemType File -Force | Out-Null
-    Write-Host " [INFO] Archivo mac.txt creado correctamente." -ForegroundColor Gray
-}
 
 # 2. Verifica que existan los archivos binarios obligatorios
 if (-not (Test-Path $fwFile) -or -not (Test-Path $configFile)) {
@@ -97,8 +92,7 @@ do {
         
         Write-Host " [LISTO]" -ForegroundColor Green
         
-        # Guardado en mac.txt (Que ya sabemos que existe)
-        "$macResult" | Add-Content -Path $macFile
+        Save-MacBackup -Mac $macResult
         Write-Host "      [REGISTRADO]" -ForegroundColor Cyan
         [System.Console]::Beep(1000, 150)
     } else {
@@ -110,3 +104,5 @@ do {
     if ($n -eq "s") { break }
 
 } while ($true)
+
+Export-MacBackupSession

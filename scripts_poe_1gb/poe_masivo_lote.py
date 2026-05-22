@@ -6,6 +6,9 @@ import os
 import sys
 from concurrent.futures import ThreadPoolExecutor
 
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "core"))
+from mac_backup import MacBackup
+
 # =====================================================================
 # CONFIGURACIÓN DEL SISTEMA (V33 STABLE + LOTE SIMULTÁNEO)
 # =====================================================================
@@ -135,6 +138,7 @@ def flash_process_stable(dev):
     except: return False
 
 def main():
+    backup = MacBackup(BASE_DIR, "POE_1GB_MASIVO")
     os.system('cls' if os.name == 'nt' else 'clear')
     print(f"{Colors.CYAN}==========================================================")
     print(f"   HELLOTEK - V33 STABLE (LOTE SIMULTÁNEO SEGURO)         ")
@@ -227,18 +231,20 @@ def main():
 
     log(f"\n--- FASE 4: AUDITORÍA Y REGISTRO ---", Colors.CYAN)
     time.sleep(5)
-    with open(MACS_FILE, "a") as f_mac:
-        for dev in discovered:
-            if verify_http(dev['ip']): # Reintento de rescate si el equipo sigue atascado
-                url = f"http://{dev['ip']}/cgi/sysipset.cgi"
-                payload = {"IP": BASE_IP, "MK": "255.255.255.0", "GW": "0.0.0.0", "MV": "1"}
-                try: requests.post(url, auth=dev['auth'], data=payload, timeout=3)
-                except: pass
-            else:
-                if dev['status'] == "EXITO":
-                    f_mac.write(f"{dev['mac']}\n")
-                log(f" [OK] {dev['ip']} regresó al origen.", Colors.GREEN)
+    for dev in discovered:
+        if verify_http(dev['ip']):
+            url = f"http://{dev['ip']}/cgi/sysipset.cgi"
+            payload = {"IP": BASE_IP, "MK": "255.255.255.0", "GW": "0.0.0.0", "MV": "1"}
+            try:
+                requests.post(url, auth=dev['auth'], data=payload, timeout=3)
+            except Exception:
+                pass
+        else:
+            if dev['status'] == "EXITO":
+                backup.save(dev['mac'], dev['status'])
+            log(f" [OK] {dev['ip']} regresó al origen.", Colors.GREEN)
 
+    backup.export_session()
     print(f"\n{Colors.GREEN}PROCESO FINALIZADO CON ÉXITO.{Colors.END}")
     for dev in discovered:
         c = Colors.GREEN if dev['status'] == "EXITO" else Colors.RED

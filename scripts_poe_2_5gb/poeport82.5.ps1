@@ -4,15 +4,11 @@
 
 # --- RUTAS AUTOMÁTICAS ---
 if ($PSScriptRoot) { $baseDir = $PSScriptRoot } else { $baseDir = Get-Location }
+$rootDir = Split-Path -Parent $baseDir
+. (Join-Path $rootDir "core\mac_backup.ps1")
+Initialize-MacBackup -ScriptDir $baseDir -Familia "POE_2_5GB_SNMP_8P"
 
-# Archivo solicitado para esta versión
 $configFile = "$baseDir\port8_snmp.bin"
-$macFile    = "$baseDir\mac.txt"
-
-# --- VERIFICACIÓN DE SEGURIDAD ---
-if (-not (Test-Path $macFile)) { 
-    New-Item -Path $macFile -ItemType File -Force | Out-Null
-}
 
 if (-not (Test-Path $configFile)) {
     Clear-Host
@@ -69,10 +65,8 @@ do {
         Write-Host " [REINICIANDO... OK]" -ForegroundColor Cyan
     }
 
-    # Registro de MAC
     if ($macResult) {
-        "$macResult" | Add-Content -Path $macFile
-        Write-Host "      [REGISTRADO EN MAC.TXT]" -ForegroundColor Gray
+        Save-MacBackup -Mac $macResult
         [System.Console]::Beep(1000, 150)
     }
 
@@ -81,3 +75,5 @@ do {
     if ($n -eq "s") { break }
 
 } while ($true)
+
+Export-MacBackupSession

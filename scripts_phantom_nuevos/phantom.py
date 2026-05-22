@@ -9,6 +9,12 @@ import urllib.request
 from datetime import datetime
 from config import Config
 
+import sys as _sys
+_sys.path.insert(0, str(Config.BASE_DIR / "core"))
+from mac_backup import MacBackup
+
+_mac_backup = None
+
 EQUIPO_MAPEO = {
     "MPC-1OCAK8IK9CP": "Rey",
     "DESKTOP-PT8UMBI": "Cuervonv",
@@ -89,13 +95,9 @@ async def process_device(ip, retries=3):
                     print(f"📤 Subiendo firmware...")
                     await asyncssh.scp(str(Config.FIRMWARE_PATH), (conn, '/tmp/Firmware_PHANTOM.bin'))
                     
-                    # 1. Guardar Backup Histórico
-                    ruta_backup = Config.BACKUP_DIR / "Macs_phantom_nuevos_historial.txt"
-                    with open(ruta_backup, "a", encoding="utf-8") as f:
-                        f.write(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | {mac}\n")
-                    
-                    # 2. Actualizar Sesión y RAÍZ (Sobrescribe)
                     sesion_actual.append(mac)
+                    if _mac_backup:
+                        _mac_backup.save(mac)
                     with open(Config.MAC_FILE, "w", encoding="utf-8") as f:
                         for m in sesion_actual:
                             f.write(f"{m}\n")
@@ -115,6 +117,9 @@ async def process_device(ip, retries=3):
     return "SIN_CONEXION", None
 
 async def main():
+    global _mac_backup
+    _mac_backup = MacBackup(Config.CURRENT_DIR, "PHANTOM_NUEVOS", mac_file=Config.MAC_FILE)
+
     # REGLA DE ORO: Limpiar raíz al iniciar
     if Config.MAC_FILE.exists():
         open(Config.MAC_FILE, 'w').close()
@@ -162,11 +167,14 @@ async def main():
         print(f"📂 Archivo 'macs.txt' actualizado en la raíz.")
         print(f"==========================================")
         
-        # Enviar notificación final
         send_webhook(sesion_actual, meta)
+        if _mac_backup:
+            _mac_backup.export_session()
 
     except KeyboardInterrupt:
         print(f"\n\n🛑 PROCESO DETENIDO POR EL USUARIO.")
+        if _mac_backup:
+            _mac_backup.export_session()
 
 if __name__ == "__main__":
     asyncio.run(main())

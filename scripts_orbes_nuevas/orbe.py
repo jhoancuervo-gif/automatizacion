@@ -8,6 +8,10 @@ import sys
 from datetime import datetime
 from config import Config
 
+import sys as _sys
+_sys.path.insert(0, str(Config.BASE_DIR / "core"))
+from mac_backup import MacBackup
+
 # Registro de la sesión
 sesion_actual = []
 
@@ -64,20 +68,21 @@ async def process_device(ip, retries=3):
                 return "FALLO_CONEXION"
     return "FALLO_CONEXION"
 
+_mac_backup = None
+
+
 def registrar_mac(mac):
-    """Guarda en macs.txt (raíz) y en backup histórico"""
-    # Backup Histórico
-    ruta_backup = Config.BACKUP_DIR / "Macs_orbes_nuevas_historial.txt"
-    with open(ruta_backup, "a", encoding="utf-8") as f:
-        f.write(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | ORBE | {mac}\n")
-    
-    # Archivo macs.txt en la RAÍZ (Acumulativo)
+    """Guarda en macs.txt (raíz) y en backups_macs centralizado"""
     sesion_actual.append(mac)
+    if _mac_backup:
+        _mac_backup.save(mac)
     with open(Config.MAC_FILE, "a", encoding="utf-8") as f:
         f.write(f"{mac}\n")
 
 async def main():
-    # REGLA DE ORO: Limpiar macs.txt de raíz al iniciar
+    global _mac_backup
+    _mac_backup = MacBackup(Config.CURRENT_DIR, "ORBE_NUEVAS", mac_file=Config.MAC_FILE)
+
     if Config.MAC_FILE.exists():
         open(Config.MAC_FILE, 'w').close()
 
@@ -119,9 +124,13 @@ async def main():
         print(f"🎉 ¡LOTE COMPLETADO! {meta}/{meta} Orbes listas.")
         print(f"📂 MACs disponibles en la raíz para verificar.")
         print(f"==========================================")
+        if _mac_backup:
+            _mac_backup.export_session()
 
     except KeyboardInterrupt:
         print(f"\n\n🛑 PROCESO DETENIDO POR EL USUARIO")
+        if _mac_backup:
+            _mac_backup.export_session()
 
 if __name__ == "__main__":
     asyncio.run(main())

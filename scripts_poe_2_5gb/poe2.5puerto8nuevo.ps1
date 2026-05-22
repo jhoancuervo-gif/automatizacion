@@ -4,8 +4,12 @@
 # =========================================================
 
 if ($PSScriptRoot) { $baseDir = $PSScriptRoot } else { $baseDir = Get-Location }
+$rootDir = Split-Path -Parent $baseDir
+. (Join-Path $rootDir "core\mac_backup.ps1")
+Initialize-MacBackup -ScriptDir $baseDir -Familia "POE_2_5GB_PUERTO8_FLASH"
+
 $fwFile = "$baseDir\upg_appimage2.bin"; $configFile = "$baseDir\port8_snmp.bin"
-$ip = "192.168.18.1"; $macFile = "$baseDir\mac.txt"
+$ip = "192.168.18.1"
 
 do {
     Clear-Host
@@ -66,6 +70,8 @@ do {
 
     # [5/5] CIERRE
     Write-Host "[5/5] Proceso finalizado."
-    "$mac" | Add-Content $macFile
+    if ($mac) { Save-MacBackup -Mac $mac }
     $n = Read-Host "Siguiente equipo (ENTER) / Salir (S)"
 } while ($n -ne "s")
+
+Export-MacBackupSession

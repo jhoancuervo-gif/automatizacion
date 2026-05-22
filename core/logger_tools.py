@@ -1,26 +1,17 @@
+"""Compatibilidad: delega en mac_backup (familia = modulo)."""
 import os
-import csv
-from datetime import datetime
+import sys
 
-# Ruta al CSV maestro en backups_macs
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, BASE_DIR)
+from mac_backup import MacBackup, normalize_mac
+
 MASTER_LOG = os.path.join(BASE_DIR, "..", "backups_macs", "produccion_master.csv")
 
-def log_to_master(modulo, mac, resultado):
-    """Guarda un registro en el CSV maestro de produccion"""
-    now = datetime.now()
-    fecha = now.strftime("%Y-%m-%d")
-    hora = now.strftime("%H:%M:%S")
-    
-    # Crear archivo con encabezados si no existe
-    if not os.path.exists(MASTER_LOG):
-        with open(MASTER_LOG, 'w', newline='', encoding='utf-8') as f:
-            writer = csv.writer(f)
-            writer.writerow(["Fecha", "Hora", "Modulo", "MAC", "Resultado"])
-            
-    try:
-        with open(MASTER_LOG, 'a', newline='', encoding='utf-8') as f:
-            writer = csv.writer(f)
-            writer.writerow([fecha, hora, modulo, mac, resultado])
-    except Exception as e:
-        print(f"⚠️ Error al escribir en el log maestro: {e}")
+
+def log_to_master(modulo, mac, resultado, script_dir=None):
+    """Guarda un registro en el CSV maestro de produccion."""
+    if script_dir is None:
+        script_dir = os.path.join(BASE_DIR, "..")
+    backup = MacBackup(script_dir, modulo)
+    backup.save(mac, resultado)

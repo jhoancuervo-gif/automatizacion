@@ -3,9 +3,12 @@
 # =========================================================
 
 $baseDir = $PSScriptRoot
+$rootDir = Split-Path -Parent $baseDir
+. (Join-Path $rootDir "core\mac_backup.ps1")
+Initialize-MacBackup -ScriptDir $baseDir -Familia "POE_1GB_FLASH"
+
 $fwFile = Join-Path $baseDir "upg_appimage.bin"
 $configFile = Join-Path $baseDir "Configmanage.bin" # Archivo con Port Forward y DHCP Filter
-$macFile = Join-Path $baseDir "mac.txt"
 
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
@@ -95,7 +98,7 @@ do {
     }
 
     # GUARDADO DE RESULTADO
-    if ($macResult) { $macResult | Add-Content -Path $macFile -ErrorAction SilentlyContinue }
+    if ($macResult) { Save-MacBackup -Mac $macResult }
 
     Write-Host "========================================" -ForegroundColor Cyan
     Write-Host "PROCESO COMPLETADO PARA: $macResult" -ForegroundColor Green
@@ -103,3 +106,5 @@ do {
 
     $next = Read-Host "Presione ENTER para el siguiente switch / 'S' para salir"
 } while ($next -ne "s")
+
+Export-MacBackupSession
