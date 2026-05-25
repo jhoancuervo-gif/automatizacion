@@ -29,8 +29,9 @@ class Config:
     SSH_PASSWORD = os.getenv("SSH_PASSWORD", "M7h$)Fw3|;63*h?ET")
     FIRMWARE_PATH = CURRENT_DIR / "Firmware_PHANTOM.bin"
 
-    # Notificaciones
-    WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL")
+    # Notificaciones Discord
+    WEBHOOK_INGRESO    = os.getenv("DISCORD_WEBHOOK_INGRESO", "")
+    WEBHOOK_PRODUCCION = os.getenv("DISCORD_WEBHOOK_PRODUCCION", "")
 
 class PortalConfig:
     """Configuración para el Portal ISP"""

@@ -30,8 +30,9 @@ class Config:
     # Firmware local
     FIRMWARE_PATH = CURRENT_DIR / "somos-openwrt-24.10.5-somosfw-mediatek-filogic-somos_phantomf2.bin"
 
-    # Discord Webhook
-    WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL")
+    # Notificaciones Discord
+    WEBHOOK_INGRESO    = os.getenv("DISCORD_WEBHOOK_INGRESO", "")
+    WEBHOOK_PRODUCCION = os.getenv("DISCORD_WEBHOOK_PRODUCCION", "")
 
 class PortalConfig:
     """Configuración del Portal ISP"""

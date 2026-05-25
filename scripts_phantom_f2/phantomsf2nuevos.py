@@ -38,19 +38,42 @@ def get_alias():
     hostname = os.getenv('COMPUTERNAME', 'Desconocido').upper()
     return EQUIPO_MAPEO.get(hostname, hostname)
 
-def send_webhook(macs, meta):
-    """Envía un resumen de las MACs flasheadas a Discord"""
-    if not Config.WEBHOOK_URL or not macs:
+def send_ingreso():
+    """Notifica al canal de ingreso cuando alguien abre el script"""
+    if not Config.WEBHOOK_INGRESO:
         return
+    try:
+        nombre_visual = get_alias()
+        data = {
+            "embeds": [{
+                "title": "🟢 Ingreso al Script",
+                "color": 5763719,
+                "fields": [
+                    {"name": "📋 Script", "value": "**Phantom F2 Nuevos**", "inline": True},
+                    {"name": "💻 Operador", "value": f"**{nombre_visual}**", "inline": True},
+                    {"name": "⏰ Hora de ingreso", "value": datetime.now().strftime('%d/%m/%Y %H:%M:%S'), "inline": False}
+                ],
+                "footer": {"text": "Sistema de Automatización - Soluciones Cuervo"}
+            }]
+        }
+        req = urllib.request.Request(Config.WEBHOOK_INGRESO, data=json.dumps(data).encode('utf-8'),
+                                     headers={'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req) as response:
+            pass
+    except Exception:
+        pass
 
+def send_webhook(macs, meta):
+    """Envía un resumen de las MACs flasheadas al canal de producción"""
+    if not Config.WEBHOOK_PRODUCCION or not macs:
+        return
     try:
         nombre_visual = get_alias()
         lista_macs = "\n".join([f"• `{mac}`" for mac in macs])
-        
         data = {
             "embeds": [{
                 "title": "👻 Lote de Phantoms F2 Nuevos Flasheados",
-                "color": 3066993, # Verde
+                "color": 3066993,
                 "fields": [
                     {"name": "🔢 Equipos Procesados", "value": f"**{len(macs)} / {meta}**", "inline": True},
                     {"name": "💻 Procesado por", "value": f"**{nombre_visual}**", "inline": True},
@@ -60,9 +83,8 @@ def send_webhook(macs, meta):
                 "footer": {"text": "Sistema de Automatización - Soluciones Cuervo"}
             }]
         }
-        
-        req = urllib.request.Request(Config.WEBHOOK_URL, data=json.dumps(data).encode('utf-8'), 
-                                   headers={'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0'})
+        req = urllib.request.Request(Config.WEBHOOK_PRODUCCION, data=json.dumps(data).encode('utf-8'),
+                                     headers={'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0'})
         with urllib.request.urlopen(req) as response:
             pass
     except Exception:
@@ -163,6 +185,9 @@ async def process_device(ip, retries=3):
 async def main():
     global _mac_backup
     _mac_backup = MacBackup(Config.CURRENT_DIR, "PHANTOM_F2_NUEVOS", mac_file=Config.MAC_FILE)
+
+    # Notificar ingreso al canal de Discord
+    send_ingreso()
 
     # REGLA DE ORO: Respaldar sesión previa y limpiar raíz
     if Config.MAC_FILE.exists() and Config.MAC_FILE.stat().st_size > 0:

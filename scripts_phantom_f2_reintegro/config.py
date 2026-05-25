@@ -28,7 +28,9 @@ class Config:
     IP_END = int(os.getenv("IP_END", "215"))
     SSH_PASSWORD = os.getenv("SSH_PASSWORD", "M7h$)Fw3|;63*h?ET")
     FIRMWARE_PATH = CURRENT_DIR / "somos-openwrt-24.10.5-somosfw-mediatek-filogic-somos_phantomf2.bin"
-    WEBHOOK_URL = os.getenv("WEBHOOK_URL", "")
+    # Notificaciones Discord
+    WEBHOOK_INGRESO    = os.getenv("DISCORD_WEBHOOK_INGRESO", "")
+    WEBHOOK_PRODUCCION = os.getenv("DISCORD_WEBHOOK_PRODUCCION", "")
 
 class PortalConfig:
     """Configuración para el Portal ISP"""
