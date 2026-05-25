@@ -7,12 +7,6 @@ import socket
 from datetime import datetime
 from config import Config
 
-import sys as _sys
-_sys.path.insert(0, str(Config.BASE_DIR / "core"))
-from mac_backup import MacBackup
-
-_mac_backup = None
-
 def get_local_ip():
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -75,11 +69,20 @@ async def process_orbe(ip):
             print(f" -> 📤 Subiendo...", end="", flush=True)
             await asyncssh.scp(str(Config.FIRMWARE_PATH), (conn, '/tmp/somosORB2-PROD.bin'))
 
+            # --- LÓGICA DE GUARDADO Y BACKUP ---
             with open(Config.MAC_FILE, 'a', encoding='utf-8') as f:
                 f.write(f"{mac}\n")
-            if _mac_backup:
-                _mac_backup.save(mac)
+            
+            fecha = datetime.now().strftime("%Y-%m-%d")
+            hora = datetime.now().strftime("%H:%M:%S")
+            historial_path = Config.BACKUP_DIR / f"orbe_reintegro_historial_{fecha}.txt"
+            
+            if not Config.BACKUP_DIR.exists():
+                Config.BACKUP_DIR.mkdir(parents=True)
 
+            with open(historial_path, 'a', encoding='utf-8') as f:
+                f.write(f"{hora} | Orbe Reintegro | {mac}\n")
+            
             # Flashear (Mantenemos tu lógica original exacta)
             print(f" -> 🚀 Flasheando...", end="", flush=True)
             try:
@@ -94,9 +97,6 @@ async def process_orbe(ip):
         return False, f"SSH_ERROR ({str(e)[:15]})"
 
 async def main():
-    global _mac_backup
-    _mac_backup = MacBackup(Config.CURRENT_DIR, "ORBE_REINTEGRO", mac_file=Config.MAC_FILE)
-
     print(f"\n🚀 ORBE REINTEGRO - MODO NMAP EFICIENTE")
     
     mi_ip = get_local_ip()
@@ -151,16 +151,12 @@ async def main():
             print(f"\n⏳ Llevamos {procesados_exitosos}/{objetivo}. Re-escaneando red...")
 
     print(f"\n\n✨ Proceso finalizado. {procesados_exitosos} equipos completados.")
-    if _mac_backup:
-        _mac_backup.export_session()
 
 if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
         print("\n⚠️ Proceso cancelado.")
-        if _mac_backup:
-            _mac_backup.export_session()
     finally:
         if Config.MAC_FILE.exists() and os.path.getsize(Config.MAC_FILE) > 0:
             try: os.startfile(Config.MAC_FILE)
