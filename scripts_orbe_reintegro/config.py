@@ -26,6 +26,10 @@ class Config:
     SSH_PASSWORD = os.getenv("SSH_PASSWORD", "M7h$)Fw3|;63*h?ET")
     FIRMWARE_PATH = CURRENT_DIR / "somosORB2-PROD.bin"
 
+    # Notificaciones Discord
+    WEBHOOK_INGRESO    = os.getenv("DISCORD_WEBHOOK_INGRESO", "")
+    WEBHOOK_PRODUCCION = os.getenv("DISCORD_WEBHOOK_PRODUCCION", "")
+
 class PortalConfig:
     """Configuración del Portal"""
     PORTAL_URL = os.getenv("PORTAL_URL", "").rstrip('/')

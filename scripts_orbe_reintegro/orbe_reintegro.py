@@ -4,8 +4,87 @@ import asyncssh
 import os
 import re
 import socket
+import json
+import urllib.request
 from datetime import datetime
 from config import Config
+
+EQUIPO_MAPEO = {
+    "MPC-1OCAK8IK9CP": "Rey",
+    "DESKTOP-PT8UMBI": "Cuervonv",
+    "ALVARO": "Alvaro",
+    "DESKTOP-4D3P5N2": "Esteban",
+    "MPC-17KT4458H7R": "Kevin",
+    "DESKTOP-7D3G6V0": "Felipe",
+    "DESKTOP-R1IDN86": "Paula Andrea",
+    "MPC-71225UVI7HG": "Bryan",
+    "USUARIO-IO29QUF": "FlechasJuan",
+    "DESKTOP-5FNCEON": "Yeison",
+    "WINDOWS-OBOHUKI": "Santiago",
+    "MPC-A5584AEIOOK": "Oscar",
+    "MPC-175K2LHCBFV": "Juan Marin",
+    "DESKTOP-A-VALLE": "Jhon Vallejo"
+}
+
+def get_alias():
+    """Obtiene el nombre mapeado del equipo actual"""
+    hostname = os.getenv('COMPUTERNAME', 'Desconocido')
+    return EQUIPO_MAPEO.get(hostname, hostname)
+
+def send_ingreso():
+    """Notifica al canal de ingreso cuando alguien abre el script"""
+    if not Config.WEBHOOK_INGRESO:
+        return
+    try:
+        nombre_visual = get_alias()
+        data = {
+            "embeds": [{
+                "title": "🟢 Ingreso al Script",
+                "color": 5763719,
+                "fields": [
+                    {"name": "📋 Script", "value": "**Orbe Reintegro**", "inline": True},
+                    {"name": "💻 Operador", "value": f"**{nombre_visual}**", "inline": True},
+                    {"name": "⏰ Hora de ingreso", "value": datetime.now().strftime('%d/%m/%Y %H:%M:%S'), "inline": False}
+                ],
+                "footer": {"text": "Sistema de Automatización - Soluciones Cuervo"}
+            }]
+        }
+        req = urllib.request.Request(Config.WEBHOOK_INGRESO, data=json.dumps(data).encode('utf-8'),
+                                     headers={'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req) as response:
+            pass
+    except Exception:
+        pass
+
+def send_webhook(macs, tipo="Orbe Reintegro"):
+    """Envía un resumen de las MACs flasheadas a Discord"""
+    if not Config.WEBHOOK_PRODUCCION or not macs:
+        return
+
+    try:
+        nombre_visual = get_alias()
+        lista_macs = "\n".join([f"• `{mac}`" for mac in macs])
+        
+        data = {
+            "embeds": [{
+                "title": f"🔮 Lote de {tipo} Flasheados",
+                "color": 3447003, # Azul
+                "fields": [
+                    {"name": "🔢 Equipos Procesados", "value": f"**{len(macs)}**", "inline": True},
+                    {"name": "💻 Procesado por", "value": f"**{nombre_visual}**", "inline": True},
+                    {"name": "📍 Direcciones MAC", "value": lista_macs, "inline": False},
+                    {"name": "⏰ Fecha", "value": datetime.now().strftime('%d/%m/%Y %H:%M:%S'), "inline": False}
+                ],
+                "footer": {"text": "Sistema de Automatización - Soluciones Cuervo"}
+            }]
+        }
+        
+        req = urllib.request.Request(Config.WEBHOOK_PRODUCCION, data=json.dumps(data).encode('utf-8'), 
+                                   headers={'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req) as response:
+            pass
+    except Exception:
+        pass
 
 def get_local_ip():
     try:
@@ -99,6 +178,9 @@ async def process_orbe(ip):
 async def main():
     print(f"\n🚀 ORBE REINTEGRO - MODO NMAP EFICIENTE")
     
+    # Notificar ingreso al canal de Discord
+    send_ingreso()
+
     mi_ip = get_local_ip()
     gateway_ip = f"{Config.IP_BASE}1"
     target_range = f"{Config.IP_BASE}0/24" 
@@ -118,6 +200,7 @@ async def main():
     print(f"🔍 Escaneando red para encontrar {objetivo} equipos activos...")
     
     procesados_exitosos = 0
+    macs_procesadas = []
     ya_intentados = {mi_ip, gateway_ip}
     
     while procesados_exitosos < objetivo:
@@ -143,6 +226,7 @@ async def main():
             
             if exito:
                 procesados_exitosos += 1
+                macs_procesadas.append(resultado)
                 print(f" ✅ TERMINADO")
             else:
                 print(f" ❌ FALLÓ: {resultado}")
@@ -151,6 +235,8 @@ async def main():
             print(f"\n⏳ Llevamos {procesados_exitosos}/{objetivo}. Re-escaneando red...")
 
     print(f"\n\n✨ Proceso finalizado. {procesados_exitosos} equipos completados.")
+    if macs_procesadas:
+        send_webhook(macs_procesadas)
 
 if __name__ == "__main__":
     try:
