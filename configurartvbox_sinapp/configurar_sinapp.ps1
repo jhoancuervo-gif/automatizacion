@@ -1,11 +1,11 @@
 ﻿# ==============================================================================
-# ESTACIÓN DE TRABAJO CUERVO - V2.41 (REPORTE AUTOMÁTICO DE EQUIPOS MDM)
+# ESTACIÓN DE TRABAJO CUERVO - V2.46 (AGREGADA OPCIÓN 3: OCULTAR DEV MENU)
 # ==============================================================================
 
 $scriptDir = $PSScriptRoot
 $adbExe = Join-Path $scriptDir "platform-tools\adb.exe"
 $ArchivoMAC = Join-Path $scriptDir "tvboxes_configurados.txt"
-$ArchivoMDM = Join-Path $scriptDir "tvboxes_CON_AGENTE.txt"  # <-- Nuevo archivo de reporte
+$ArchivoMDM = Join-Path $scriptDir "tvboxes_CON_AGENTE.txt"  
 $ArchivoBackup = Join-Path $scriptDir "mac_backup.txt"
 $MaxParalelo = 15 
 
@@ -25,31 +25,32 @@ if (-not $miIP_Detectada) { $miIP_Detectada = "0.0.0.0" }
 while ($true) {
     Clear-Host
     Write-Host "=========================================================" -ForegroundColor Magenta
-    Write-Host "    ESTACION DE TRABAJO CUERVO - V2.41 [REPORTE MDM]     " -ForegroundColor Magenta
+    Write-Host "    ESTACION DE TRABAJO CUERVO - V2.46 [MULTI-TAREA]     " -ForegroundColor Magenta
     Write-Host "    IP PC: $miIP_Detectada | DHCP: .200-.250            " -ForegroundColor Gray
     Write-Host "=========================================================" -ForegroundColor Magenta
     Write-Host " 1. Configurar y Limpiar App SOMOS (Filtra y Reporta MDM)" -ForegroundColor Cyan
     Write-Host " 2. HARD RESET / Borrado de Fabrica (Fuerza MDM + Clean)" -ForegroundColor Yellow
-    Write-Host " 3. Salir" -ForegroundColor Red
+    Write-Host " 3. Solo OCULTAR Opciones de Desarrollador (Equipos listos)" -ForegroundColor Green
+    Write-Host " 4. Salir" -ForegroundColor Red
     Write-Host "=========================================================" -ForegroundColor Magenta
 
-    $Opcion = Read-Host "`nElige una opcion (1, 2 o 3)"
-    if ($Opcion -eq "3") { break }
-    if ($Opcion -notmatch "^[12]$") { continue }
+    $Opcion = Read-Host "`nElige una opcion (1, 2, 3 o 4)"
+    if ($Opcion -eq "4") { break }
+    if ($Opcion -notmatch "^[123]$") { continue }
 
     $CantidadMesa = 0
     $inputUser = Read-Host "¿Cuantos equipos TOTALES tienes conectados físicamente en la mesa?"
     if (-not [int]::TryParse($inputUser, [ref]$CantidadMesa)) { $CantidadMesa = 1 }
 
-    & $adbExe kill-server 2>$null
-    & $adbExe start-server 2>$null
+    &$adbExe kill-server 2>$null
+    &$adbExe start-server 2>$null
 
-    $AccionPendiente = if ($Opcion -eq "1") { "CONFIGURAR" } else { "FORMATEAR" }
+    $AccionPendiente = if ($Opcion -eq "1") { "CONFIGURAR" } elseif ($Opcion -eq "2") { "FORMATEAR" } else { "OCULTAR MENU DEV" }
     Write-Host "`n🔍 MODO CENTINELA: Analizando lote de $CantidadMesa equipos para $AccionPendiente..." -ForegroundColor Cyan
     
     $ipsEncontradas = @()
     $ipsDescartadasMDM = @()
-    $macsDetectadasMDM = @() # Colección temporal para las MAC con agente
+    $macsDetectadasMDM = @() 
     $intentos = 0
 
     while (($ipsEncontradas.Count + $ipsDescartadasMDM.Count) -lt $CantidadMesa) {
@@ -70,14 +71,13 @@ while ($true) {
                         $socket.Close()
                         
                         $serial = "${targetIp}:5555"
-                        $null = & $pathADB connect $serial
+                        $null = &$pathADB connect $serial
                         Start-Sleep -Milliseconds 200
                         
-                        # Extraemos la MAC de una vez por si resulta ser un equipo descartado
-                        $macRaw = & $pathADB -s $serial shell "cat /sys/class/net/eth0/address 2>/dev/null || cat /sys/class/net/wlan0/address 2>/dev/null"
+                        $macRaw = &$pathADB -s $serial shell "cat /sys/class/net/eth0/address 2>/dev/null || cat /sys/class/net/wlan0/address 2>/dev/null"
                         $mac = if ($macRaw -match '([0-9A-F]{2}:){5}[0-9A-F]{2}') { $macRaw.Trim().ToUpper() } else { "MAC_DESCONOCIDA" }
 
-                        $hasMDM = & $pathADB -s $serial shell "pm list packages" | Select-String "com.somos.mdmagent"
+                        $hasMDM = &$pathADB -s $serial shell "pm list packages" | Select-String "com.somos.mdmagent"
                         
                         if ($hasMDM) {
                             if ($modoMenu -eq "2") {
@@ -112,7 +112,7 @@ while ($true) {
                         $ipsEncontradas += $ipResult
                         Write-Host "  [+] ADB LISTO: $ipResult (Limpio)" -ForegroundColor Green
                         [System.Console]::Beep(800, 150)
-                    } 
+                    }
                     elseif ($status -eq "MDM_RESET" -and $ipsEncontradas -notcontains $ipResult) {
                         $ipsEncontradas += $ipResult
                         Write-Host "  [⚠️ MDM DETECTADO] IP $ipResult agregada al lote para forzar HARD RESET." -ForegroundColor Yellow
@@ -146,7 +146,6 @@ while ($true) {
         }
     }
 
-    # Si se filtraron cajas infectadas en la Opción 1, generamos su reporte de inmediato
     if ($macsDetectadasMDM.Count -gt 0) {
         $macsDetectadasMDM | Out-File -FilePath $ArchivoMDM -Encoding UTF8
         Write-Host "`n⚠️ Generado reporte de equipos con AGENTE MDM ($($macsDetectadasMDM.Count) detectados)." -ForegroundColor Yellow
@@ -159,7 +158,7 @@ while ($true) {
         continue
     }
 
-    $AccionTxt = if ($Opcion -eq "1") { "Configurando quirúrgicamente" } else { "Enviando comandos de Factory Reset masivo a" }
+    $AccionTxt = if ($Opcion -eq "1") { "Configurando quirúrgicamente" } elseif ($Opcion -eq "2") { "Enviando comandos de Factory Reset masivo a" } else { "Ocultando menú de desarrollo en" }
     Write-Host "`n🚀 Lote cerrado con éxito. $AccionTxt $($ipsEncontradas.Count) equipos simultáneamente..." -ForegroundColor Cyan
     
     $RunspacePool = [runspacefactory]::CreateRunspacePool(1, $MaxParalelo)
@@ -171,16 +170,16 @@ while ($true) {
             param($targetIp, $pathADB, $modo)
             try {
                 $serial = "${targetIp}:5555"
-                $null = & $pathADB connect $serial
+                $null = &$pathADB connect $serial
                 Start-Sleep -Milliseconds 400
                 
-                $macRaw = & $pathADB -s $serial shell "cat /sys/class/net/eth0/address 2>/dev/null || cat /sys/class/net/wlan0/address 2>/dev/null"
+                $macRaw = &$pathADB -s $serial shell "cat /sys/class/net/eth0/address 2>/dev/null || cat /sys/class/net/wlan0/address 2>/dev/null"
                 $mac = if ($macRaw -match '([0-9A-F]{2}:){5}[0-9A-F]{2}') { $macRaw.Trim().ToUpper() } else { "MAC_DESCONOCIDA" }
 
                 if ($modo -eq "1") {
-                    $null = & $pathADB -s $serial shell "su 0 mount -o rw,remount /"
-                    $null = & $pathADB -s $serial shell "su 0 rm -f /system/preinstall/*omos*.apk"
-                    $null = & $pathADB -s $serial shell "su 0 rm -f /system/preinstall/*OMOS*.apk"
+                    $null = &$pathADB -s $serial shell "su 0 mount -o rw,remount /"
+                    $null = &$pathADB -s $serial shell "su 0 rm -f /system/preinstall/*omos*.apk"
+                    $null = &$pathADB -s $serial shell "su 0 rm -f /system/preinstall/*OMOS*.apk"
 
                     $cmds = @(
                         "setprop persist.sys.language es",
@@ -190,32 +189,37 @@ while ($true) {
                         "settings put global wifi_on 0",
                         "svc wifi disable"
                     )
-                    foreach ($c in $cmds) { $null = & $pathADB -s $serial shell $c }
+                    foreach ($c in $cmds) { $null = &$pathADB -s $serial shell $c }
 
-                    $pkgs = & $pathADB -s $serial shell "pm list packages | grep -i somos"
+                    $pkgs = &$pathADB -s $serial shell "pm list packages | grep -i somos"
                     if ($pkgs) {
                         foreach ($line in $pkgs) {
                             $line = $line -replace "`r", ""
                             if ($line -match "package:(.+)") {
                                 $appId = $matches[1].Trim()
                                 if ($appId -ne "com.somos.mdmagent") {
-                                    $null = & $pathADB -s $serial shell "am force-stop $appId"
-                                    $null = & $pathADB -s $serial shell "pm clear $appId"
-                                    $null = & $pathADB -s $serial shell "pm uninstall --user 0 $appId"
+                                    $null = &$pathADB -s $serial shell "am force-stop $appId"
+                                    $null = &$pathADB -s $serial shell "pm clear $appId"
+                                    $null = &$pathADB -s $serial shell "pm uninstall --user 0 $appId"
                                 }
                             }
                         }
                     }
 
                     Start-Sleep -Milliseconds 500
-                    $null = & $pathADB -s $serial shell reboot
+                    $null = &$pathADB -s $serial shell reboot
                     return "OK|$targetIp|$mac"
-                } 
+                }
+                elseif ($modo -eq "3") {
+                    # Lógica de la NUEVA OPCIÓN 3: Solo ocultar el menú de desarrollador
+                    $null = &$pathADB -s $serial shell "settings put global development_settings_enabled 0"
+                    return "HIDDEN|$targetIp|$mac"
+                }
                 else {
                     $resetCmd = "am broadcast -a android.intent.action.MASTER_CLEAR -p android --receiver-foreground"
-                    $null = & $pathADB -s $serial shell "su 0 $resetCmd || $resetCmd"
+                    $null = &$pathADB -s $serial shell "su 0 $resetCmd || $resetCmd"
                     Start-Sleep -Milliseconds 300
-                    $null = & $pathADB -s $serial shell "su 0 svc power reboot recovery || reboot recovery"
+                    $null = &$pathADB -s $serial shell "su 0 svc power reboot recovery || reboot recovery"
                     return "RESET|$targetIp|$mac"
                 }
 
@@ -239,6 +243,9 @@ while ($true) {
             Write-Host "  [OK - CONFIGURADO] $($data[1]) -> $($data[2])" -ForegroundColor Green
             $macsFinales += $data[2]
         }
+        elseif ($data[0] -eq 'HIDDEN') {
+            Write-Host "  [OK - MENÚ OCULTO] $($data[1]) -> $($data[2])" -ForegroundColor Green
+        }
         elseif ($data[0] -eq 'RESET') {
             Write-Host "  [⚠️ EN RESET / RECOVERY] $($data[1]) -> $($data[2])" -ForegroundColor Yellow
         }
@@ -260,6 +267,10 @@ while ($true) {
     elseif ($Opcion -eq "2") {
         Write-Host "`n✅ Ráfaga de comandos de formateo enviada al lote." -ForegroundColor Green
         [System.Console]::Beep(440, 400)
+    }
+    elseif ($Opcion -eq "3") {
+        Write-Host "`n✅ Menú de desarrollo ocultado en todos los equipos detectados." -ForegroundColor Green
+        [System.Console]::Beep(523, 300)
     }
 
     if ((Read-Host "`n¿Siguiente lote o volver al menu? (S para continuar)") -notmatch "S|s") { break }
