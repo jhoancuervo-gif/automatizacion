@@ -27,9 +27,34 @@ def get_alias():
     hostname = os.getenv('COMPUTERNAME', 'Desconocido')
     return EQUIPO_MAPEO.get(hostname, hostname)
 
+def send_ingreso():
+    """Notifica al canal de ingreso cuando alguien abre el script"""
+    if not Config.WEBHOOK_INGRESO:
+        return
+    try:
+        nombre_visual = get_alias()
+        data = {
+            "embeds": [{
+                "title": "🟢 Ingreso al Script",
+                "color": 5763719,
+                "fields": [
+                    {"name": "📋 Script", "value": "**Phantom F2 Reintegro**", "inline": True},
+                    {"name": "💻 Operador", "value": f"**{nombre_visual}**", "inline": True},
+                    {"name": "⏰ Hora de ingreso", "value": datetime.now().strftime('%d/%m/%Y %H:%M:%S'), "inline": False}
+                ],
+                "footer": {"text": "Sistema de Automatización - Soluciones Cuervo"}
+            }]
+        }
+        req = urllib.request.Request(Config.WEBHOOK_INGRESO, data=json.dumps(data).encode('utf-8'),
+                                     headers={'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req) as response:
+            pass
+    except Exception:
+        pass
+
 def send_webhook(macs, tipo="F2 Reintegro"):
     """Envía un resumen de las MACs flasheadas a Discord"""
-    if not Config.WEBHOOK_URL or not macs:
+    if not Config.WEBHOOK_PRODUCCION or not macs:
         return
 
     try:
@@ -50,7 +75,7 @@ def send_webhook(macs, tipo="F2 Reintegro"):
             }]
         }
         
-        req = urllib.request.Request(Config.WEBHOOK_URL, data=json.dumps(data).encode('utf-8'), 
+        req = urllib.request.Request(Config.WEBHOOK_PRODUCCION, data=json.dumps(data).encode('utf-8'), 
                                    headers={'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0'})
         with urllib.request.urlopen(req) as response:
             pass
@@ -161,6 +186,9 @@ async def process_device(ip, semaphore):
 
 async def main():
     print(f"\n🚀 PHANTOM REINTEGRO - MOTOR ULTRA-RÁPIDO (PARALELO)")
+
+    # Notificar ingreso al canal de Discord
+    send_ingreso()
 
     # LIMPIEZA DE ARRANQUE: Asegura que el archivo de la raíz empiece vacío
     if Config.MAC_FILE.exists():
