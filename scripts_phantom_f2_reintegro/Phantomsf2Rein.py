@@ -10,12 +10,6 @@ import urllib.request
 from datetime import datetime
 from config import Config
 
-import sys as _sys
-_sys.path.insert(0, str(Config.BASE_DIR / "core"))
-from mac_backup import MacBackup
-
-_mac_backup = None
-
 EQUIPO_MAPEO = {
     "MPC-1OCAK8IK9CP": "Rey",
     "DESKTOP-PT8UMBI": "Cuervonv",
@@ -25,55 +19,27 @@ EQUIPO_MAPEO = {
     "DESKTOP-7D3G6V0": "Felipe",
     "DESKTOP-R1IDN86": "Paula Andrea",
     "MPC-71225UVI7HG": "Bryan",
-    "USUARIO-IO29QUF": "FlechasJuan",
-    "DESKTOP-5FNCEON": "Yeison",
-    "WINDOWS-OBOHUKI": "Santiago",
-    "MPC-A5584AEIOOK": "Oscar",
-    "MPC-175K2LHCBFV": "Juan Marin",
-    "DESKTOP-A-VALLE": "Jhon Vallejo"
+    "USUARIO-IO29QUF": "FlechasJuan"
 }
 
 def get_alias():
     """Obtiene el nombre mapeado del equipo actual"""
-    hostname = os.getenv('COMPUTERNAME', 'Desconocido').upper()
+    hostname = os.getenv('COMPUTERNAME', 'Desconocido')
     return EQUIPO_MAPEO.get(hostname, hostname)
 
-def send_ingreso():
-    """Notifica al canal de ingreso cuando alguien abre el script"""
-    if not Config.WEBHOOK_INGRESO:
-        return
-    try:
-        nombre_visual = get_alias()
-        data = {
-            "embeds": [{
-                "title": "🟢 Ingreso al Script",
-                "color": 5763719,
-                "fields": [
-                    {"name": "📋 Script", "value": "**Phantom F2 Reintegro**", "inline": True},
-                    {"name": "💻 Operador", "value": f"**{nombre_visual}**", "inline": True},
-                    {"name": "⏰ Hora de ingreso", "value": datetime.now().strftime('%d/%m/%Y %H:%M:%S'), "inline": False}
-                ],
-                "footer": {"text": "Sistema de Automatización - Soluciones Cuervo"}
-            }]
-        }
-        req = urllib.request.Request(Config.WEBHOOK_INGRESO, data=json.dumps(data).encode('utf-8'),
-                                     headers={'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0'})
-        with urllib.request.urlopen(req) as response:
-            pass
-    except Exception:
-        pass
-
 def send_webhook(macs, tipo="F2 Reintegro"):
-    """Envía un resumen de las MACs flasheadas al canal de producción"""
-    if not Config.WEBHOOK_PRODUCCION or not macs:
+    """Envía un resumen de las MACs flasheadas a Discord"""
+    if not Config.WEBHOOK_URL or not macs:
         return
+
     try:
         nombre_visual = get_alias()
         lista_macs = "\n".join([f"• `{mac}`" for mac in macs])
+        
         data = {
             "embeds": [{
                 "title": f"👻 Lote de Phantoms {tipo} Flasheados",
-                "color": 3447003,
+                "color": 3447003, # Azul
                 "fields": [
                     {"name": "🔢 Equipos Procesados", "value": f"**{len(macs)}**", "inline": True},
                     {"name": "💻 Procesado por", "value": f"**{nombre_visual}**", "inline": True},
@@ -83,8 +49,9 @@ def send_webhook(macs, tipo="F2 Reintegro"):
                 "footer": {"text": "Sistema de Automatización - Soluciones Cuervo"}
             }]
         }
-        req = urllib.request.Request(Config.WEBHOOK_PRODUCCION, data=json.dumps(data).encode('utf-8'),
-                                     headers={'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0'})
+        
+        req = urllib.request.Request(Config.WEBHOOK_URL, data=json.dumps(data).encode('utf-8'), 
+                                   headers={'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0'})
         with urllib.request.urlopen(req) as response:
             pass
     except Exception:
@@ -95,64 +62,44 @@ print_lock = asyncio.Lock()
 file_lock = asyncio.Lock()
 
 
-async def check_port(ip, port, timeout=0.8):
-    try:
-        reader, writer = await asyncio.wait_for(asyncio.open_connection(ip, port), timeout=timeout)
-        writer.close()
-        await writer.wait_closed()
-        return ip
-    except:
-        return None
-
-async def scan_network(cantidad):
-    """Escanea la red buscando dispositivos con el puerto 22 abierto (SSH), de forma similar a PS1."""
-    ips_encontradas = set()
-    intentos = 0
-    
-    # Detectar IP local para omitirla
-    hostname = socket.gethostname()
-    try:
-        local_ips = socket.gethostbyname_ex(hostname)[2]
-    except Exception:
-        local_ips = []
-        
-    base_ip = Config.IP_BASE if Config.IP_BASE.endswith('.') else f"{Config.IP_BASE}."
+async def scan_network():
+    """Escanea la red buscando dispositivos con el puerto 22 abierto (SSH)."""
+    # Escaneo de toda la red /24
+    target = f"{Config.IP_BASE}0/24" if Config.IP_BASE.endswith('.') else f"{Config.IP_BASE}.0/24"
     
     async with print_lock:
-        print(f"\n🔍 MODO CENTINELA: Esperando a que {cantidad} equipos estén listos para Flashear...")
+        print(f"🔍 Escaneando red {target} en busca de equipos (Puerto 22)...")
+    
+    try:
+        # Detectar IPs locales del PC para omitirlas
+        hostname = socket.gethostname()
+        local_ips = socket.gethostbyname_ex(hostname)[2]
         
-    while len(ips_encontradas) < cantidad:
-        tasks = []
-        # Rango de 200 a 250 igual que en PS1
-        for i in range(200, 251):
-            ip = f"{base_ip}{i}"
-            if ip in local_ips or ip in ips_encontradas:
-                continue
-            tasks.append(check_port(ip, 22))
-            
-        resultados = await asyncio.gather(*tasks)
-        nuevas_ips = [res for res in resultados if res]
+        process = await asyncio.create_subprocess_exec(
+            'nmap', '-p', '22', '--open', '-n', '-T5', target, '-oG', '-',
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        stdout, _ = await process.communicate()
         
-        for ip in nuevas_ips:
-            ips_encontradas.add(ip)
+        output = stdout.decode()
+        # Solo capturar IPs que tienen el puerto open
+        ips_encontradas = list(set(re.findall(r"Host: (\d+\.\d+\.\d+\.\d+).*Ports:.*22/open", output)))
+        
+        # Filtrar la IP propia del PC
+        ips = [ip for ip in ips_encontradas if ip not in local_ips]
+        
+        # Informar qué IPs se omitieron si se encontraron
+        omitted = [ip for ip in ips_encontradas if ip in local_ips]
+        if omitted:
             async with print_lock:
-                print(f"  [+] SSH LISTO: {ip} ({len(ips_encontradas)}/{cantidad})")
+                print(f"ℹ️ Omitiendo IP local del PC: {', '.join(omitted)}")
                 
-        if len(ips_encontradas) < cantidad:
-            intentos += 1
-            faltan = cantidad - len(ips_encontradas)
-            async with print_lock:
-                print(f"  ⏳ Faltan {faltan} equipos. Buscando de nuevo... (Intento {intentos})")
-            await asyncio.sleep(2)
-            
-            if intentos >= 15:
-                # Prompt bloqueante en la consola
-                forzar = input(f"\n⚠️ Han pasado 30s. ¿Forzar ejecución con los {len(ips_encontradas)} encontrados? (S/N): ")
-                if forzar.strip().lower() == 's':
-                    break
-                intentos = 0
-                
-    return list(ips_encontradas)
+        return ips
+    except Exception as e:
+        async with print_lock:
+            print(f"❌ Error durante el escaneo: {e}")
+        return []
 
 
 async def process_device(ip, semaphore):
@@ -171,15 +118,19 @@ async def process_device(ip, semaphore):
                     mac = mac_match.group(1).upper()
 
                     # Subir Firmware
-                    await asyncssh.scp(str(Config.FIRMWARE_PATH), (conn, '/tmp/somos-openwrt-24.10.5-somosfw-mediatek-filogic-somos_phantomf2.bin'))
+                    await asyncssh.scp(str(Config.FIRMWARE_PATH), (conn, '/tmp/Firmware_PHANTOM-F2.bin'))
 
                     # --- LÓGICA DE GUARDADO CON LOCK ---
                     async with file_lock:
-                        sesion_actual.append(mac)
-                        if _mac_backup:
-                            _mac_backup.save(mac)
+                        # 1. Guardar en BACKUP (Historial completo)
+                        ruta_backup = Config.BACKUP_DIR / "Macs_phantom_reintegrof2.txt"
+                        with open(ruta_backup, "a", encoding="utf-8") as f:
+                            f.write(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | {mac}\n")
 
-                        # Escribir en la RAÍZ (macs.txt) - Sobrescribe con lo actual
+                        # 2. Actualizar lista de sesión
+                        sesion_actual.append(mac)
+
+                        # 3. Escribir en la RAÍZ (macs.txt) - Sobrescribe con lo actual
                         with open(Config.MAC_FILE, "w", encoding="utf-8") as f:
                             for m in sesion_actual:
                                 f.write(f"{m}\n")
@@ -190,7 +141,7 @@ async def process_device(ip, semaphore):
 
                     try:
                         # Usamos run sin esperar el cierre total ya que el reboot corta la conexión
-                        await conn.run("sysupgrade -n /tmp/somos-openwrt-24.10.5-somosfw-mediatek-filogic-somos_phantomf2.bin", timeout=5)
+                        await conn.run("sysupgrade -n /tmp/Firmware_PHANTOM-F2.bin", timeout=5)
                     except:
                         pass
 
@@ -209,33 +160,22 @@ async def process_device(ip, semaphore):
 
 
 async def main():
-    global _mac_backup
-    _mac_backup = MacBackup(Config.CURRENT_DIR, "PHANTOM_F2_REINTEGRO", mac_file=Config.MAC_FILE)
-
-    # Notificar ingreso al canal de Discord
-    send_ingreso()
-
     print(f"\n🚀 PHANTOM REINTEGRO - MOTOR ULTRA-RÁPIDO (PARALELO)")
 
     # LIMPIEZA DE ARRANQUE: Asegura que el archivo de la raíz empiece vacío
     if Config.MAC_FILE.exists():
         open(Config.MAC_FILE, 'w').close()
 
-    try:
-        cantidad_input = input("¿Equipos para este lote?: ")
-        cantidad = int(cantidad_input)
-    except ValueError:
-        cantidad = 1
-
     # ESCANEO DINÁMICO
-    ips = await scan_network(cantidad)
+    ips = await scan_network()
 
     if not ips:
         print("❌ No se encontraron equipos activos en la red.")
         input("\nPresione ENTER para salir...")
         return
 
-    print(f"\n🚀 Iniciando procesamiento de {len(ips)} equipos simultáneamente...")
+    print(f"✅ Se encontraron {len(ips)} equipos.")
+    input(f"\n[!] Presione ENTER para iniciar el procesamiento en paralelo...")
 
     # PROCESAMIENTO EN PARALELO
     semaphore = asyncio.Semaphore(30)
@@ -245,9 +185,8 @@ async def main():
 
     if sesion_actual:
         print(f"\n✨ Proceso terminado. {len(sesion_actual)} MACs listas en la raíz.")
+        # Enviar notificación final
         send_webhook(sesion_actual)
-        if _mac_backup:
-            _mac_backup.export_session()
     else:
         print(f"\n⚠️ No se procesó ninguna MAC correctamente.")
 

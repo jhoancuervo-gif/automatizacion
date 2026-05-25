@@ -10,12 +10,6 @@ import urllib.request
 from datetime import datetime
 from config import Config
 
-import sys as _sys
-_sys.path.insert(0, str(Config.BASE_DIR / "core"))
-from mac_backup import MacBackup
-
-_mac_backup = None
-
 EQUIPO_MAPEO = {
     "MPC-1OCAK8IK9CP": "Rey",
     "DESKTOP-PT8UMBI": "Cuervonv",
@@ -25,47 +19,17 @@ EQUIPO_MAPEO = {
     "DESKTOP-7D3G6V0": "Felipe",
     "DESKTOP-R1IDN86": "Paula Andrea",
     "MPC-71225UVI7HG": "Bryan",
-    "USUARIO-IO29QUF": "FlechasJuan",
-    "DESKTOP-5FNCEON": "Yeison",
-    "WINDOWS-OBOHUKI": "Santiago",
-    "MPC-A5584AEIOOK": "Oscar",
-    "MPC-175K2LHCBFV": "Juan Marin",
-    "DESKTOP-A-VALLE": "Jhon Vallejo"
+    "USUARIO-IO29QUF": "FlechasJuan"
 }
 
 def get_alias():
     """Obtiene el nombre mapeado del equipo actual"""
-    hostname = os.getenv('COMPUTERNAME', 'Desconocido').upper()
+    hostname = os.getenv('COMPUTERNAME', 'Desconocido')
     return EQUIPO_MAPEO.get(hostname, hostname)
 
-def send_ingreso():
-    """Notifica al canal de ingreso cuando alguien abre el script"""
-    if not Config.WEBHOOK_INGRESO:
-        return
-    try:
-        nombre_visual = get_alias()
-        data = {
-            "embeds": [{
-                "title": "🟢 Ingreso al Script",
-                "color": 5763719,  # Verde
-                "fields": [
-                    {"name": "📋 Script", "value": "**Phantom Reintegro**", "inline": True},
-                    {"name": "💻 Operador", "value": f"**{nombre_visual}**", "inline": True},
-                    {"name": "⏰ Hora de ingreso", "value": datetime.now().strftime('%d/%m/%Y %H:%M:%S'), "inline": False}
-                ],
-                "footer": {"text": "Sistema de Automatización - Soluciones Cuervo"}
-            }]
-        }
-        req = urllib.request.Request(Config.WEBHOOK_INGRESO, data=json.dumps(data).encode('utf-8'),
-                                     headers={'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0'})
-        with urllib.request.urlopen(req) as response:
-            pass
-    except Exception:
-        pass
-
 def send_webhook(macs, tipo="Reintegro"):
-    """Envía un resumen de las MACs flasheadas al canal de producción"""
-    if not Config.WEBHOOK_PRODUCCION or not macs:
+    """Envía un resumen de las MACs flasheadas a Discord"""
+    if not Config.WEBHOOK_URL or not macs:
         return
 
     try:
@@ -75,7 +39,7 @@ def send_webhook(macs, tipo="Reintegro"):
         data = {
             "embeds": [{
                 "title": f"👻 Lote de Phantoms {tipo} Flasheados",
-                "color": 3447003,  # Azul para Reintegro
+                "color": 3447003, # Azul para Reintegro
                 "fields": [
                     {"name": "🔢 Equipos Procesados", "value": f"**{len(macs)}**", "inline": True},
                     {"name": "💻 Procesado por", "value": f"**{nombre_visual}**", "inline": True},
@@ -86,8 +50,8 @@ def send_webhook(macs, tipo="Reintegro"):
             }]
         }
         
-        req = urllib.request.Request(Config.WEBHOOK_PRODUCCION, data=json.dumps(data).encode('utf-8'),
-                                     headers={'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0'})
+        req = urllib.request.Request(Config.WEBHOOK_URL, data=json.dumps(data).encode('utf-8'), 
+                                   headers={'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0'})
         with urllib.request.urlopen(req) as response:
             pass
     except Exception:
@@ -156,11 +120,15 @@ async def process_device(ip, semaphore):
                     
                     # --- LÓGICA DE GUARDADO CON LOCK ---
                     async with file_lock:
+                        # 1. Guardar en BACKUP (Historial completo)
+                        ruta_backup = Config.BACKUP_DIR / "Macs_phantom_reintegro.txt"
+                        with open(ruta_backup, "a", encoding="utf-8") as f:
+                            f.write(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | {mac}\n")
+                        
+                        # 2. Actualizar lista de sesión
                         sesion_actual.append(mac)
-                        if _mac_backup:
-                            _mac_backup.save(mac)
 
-                        # Escribir en la RAÍZ (macs.txt) - Sobrescribe con lo actual
+                        # 3. Escribir en la RAÍZ (macs.txt) - Sobrescribe con lo actual
                         with open(Config.MAC_FILE, "w", encoding="utf-8") as f:
                             for m in sesion_actual:
                                 f.write(f"{m}\n")
@@ -189,12 +157,6 @@ async def process_device(ip, semaphore):
             return False
 
 async def main():
-    global _mac_backup
-    _mac_backup = MacBackup(Config.CURRENT_DIR, "PHANTOM_REINTEGRO", mac_file=Config.MAC_FILE)
-
-    # Notificar ingreso al canal de Discord
-    send_ingreso()
-
     print(f"\n🚀 PHANTOM REINTEGRO - MOTOR ULTRA-RÁPIDO (PARALELO)")
     
     # LIMPIEZA DE ARRANQUE
@@ -222,9 +184,8 @@ async def main():
 
     if sesion_actual:
         print(f"\n✨ Proceso terminado. {len(sesion_actual)} MACs listas en la raíz.")
+        # Enviar notificación final
         send_webhook(sesion_actual)
-        if _mac_backup:
-            _mac_backup.export_session()
     else:
         print(f"\n⚠️ No se procesó ninguna MAC correctamente.")
         
