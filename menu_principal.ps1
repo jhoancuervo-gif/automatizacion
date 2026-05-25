@@ -48,25 +48,18 @@ if ($EquipoMapeo.ContainsKey($env:COMPUTERNAME)) {
 
 # --- NOTIFICACION DE INICIO (DISCORD WEBHOOK) ---
 try {
-    $WebhookURL = "https://discord.com/api/webhooks/1501650686700425389/Vovrg4DTz1WBb3yzzyn2h8xsiCNIWIia33P7ANR-3q_WMahR8LwqfftdeUIXi7VrSAMy"
-    $Payload = @{
-        embeds = @(
-            @{
-                title  = "$Rocket Estacion de Trabajo Activa"
-                color  = 5814783
-                fields = @(
-                    @{ name = "$User Usuario"; value = "**$env:USERNAME**"; inline = $true }
-                    @{ name = "$PC Equipo"; value = "**$script:NombreVisual**"; inline = $true }
-                    @{ name = "$Globe IP Local"; value = "$($script:IP)"; inline = $true }
-                    @{ name = "$Cal Fecha y Hora"; value = (Get-Date -Format "dd/MM/yyyy HH:mm:ss"); inline = $false }
-                )
-                footer = @{ text = "Sistema de Automatizacion - Soluciones Cuervo" }
-            }
-        )
-    } | ConvertTo-Json -Depth 10
-    Invoke-RestMethod -Uri $WebhookURL -Method Post -Body $Payload -ContentType 'application/json' -ErrorAction SilentlyContinue
+    $WebhookURL = "https://discord.com/api/webhooks/1508440215793041560/ctsn9u7nARx1RkUi8jI2ziW3PRx0HeM5CYMLcJZHopqPkQEEnt5hjD-DwlfL02JsxkOz"
+    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+    $fecha = Get-Date -Format "dd/MM/yyyy HH:mm:ss"
+    $ip    = if ($script:IP) { $script:IP } else { "N/A" }
+    $JsonPayload = "{`"embeds`":[{`"title`":`"Estacion de Trabajo Activa`",`"color`":5814783,`"fields`":[{`"name`":`"Usuario`",`"value`":`"**$env:USERNAME**`",`"inline`":true},{`"name`":`"Equipo`",`"value`":`"**$script:NombreVisual**`",`"inline`":true},{`"name`":`"IP Local`",`"value`":`"$ip`",`"inline`":true},{`"name`":`"Fecha y Hora`",`"value`":`"$fecha`",`"inline`":false}],`"footer`":{`"text`":`"Sistema de Automatizacion - Soluciones Cuervo`"}}]}"
+    $bytes = [System.Text.Encoding]::UTF8.GetBytes($JsonPayload)
+    $wc = New-Object System.Net.WebClient
+    $wc.Headers.Add("Content-Type", "application/json")
+    $wc.UploadData($WebhookURL, "POST", $bytes) | Out-Null
 }
 catch { }
+
 
 function Ejecutar-Herramienta {
     param([string]$SubDir, [string]$ScriptName)
