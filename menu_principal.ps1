@@ -8,6 +8,24 @@ $host.ui.RawUI.WindowTitle = "Automation Station - $env:USERNAME"
 $RootPath = $PSScriptRoot
 $EnvPath = Join-Path $RootPath ".env"
 
+# --- CARGAR VARIABLES DESDE .env ---
+if (Test-Path $EnvPath) {
+    Get-Content $EnvPath | ForEach-Object {
+        if ($_ -match '^\s*([^#][^=]*)\s*=\s*(.*)$') {
+            $key = $matches[1].Trim()
+            $val = $matches[2].Trim().Trim('"')
+            if ($key) { [System.Environment]::SetEnvironmentVariable($key, $val, "Process") }
+        }
+    }
+}
+
+# --- ACTIVAR ENTORNO VIRTUAL PYTHON (.venv) ---
+$VenvScripts = Join-Path $RootPath ".venv\Scripts"
+if (Test-Path $VenvScripts) {
+    $env:PATH = "$VenvScripts;$env:PATH"
+    $env:VIRTUAL_ENV = Join-Path $RootPath ".venv"
+}
+
 # --- DEFINICION DE CARACTERES ESPECIALES (MODO COMPATIBLE) ---
 $TL = [char]0x2554; $H = [char]0x2550; $TR = [char]0x2557; $V = [char]0x2551
 $ML = [char]0x2560; $MR = [char]0x2563; $BL = [char]0x255A; $BR = [char]0x255D
@@ -48,7 +66,8 @@ if ($EquipoMapeo.ContainsKey($env:COMPUTERNAME)) {
 
 # --- NOTIFICACION DE INICIO (DISCORD WEBHOOK) ---
 try {
-    $WebhookURL = "https://discord.com/api/webhooks/1508440215793041560/ctsn9u7nARx1RkUi8jI2ziW3PRx0HeM5CYMLcJZHopqPkQEEnt5hjD-DwlfL02JsxkOz"
+    $WebhookURL = $env:DISCORD_WEBHOOK_INGRESO
+    if (-not $WebhookURL) { throw "Webhook no configurado" }
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
     $fecha = Get-Date -Format "dd/MM/yyyy HH:mm:ss"
     $ip    = if ($script:IP) { $script:IP } else { "N/A" }

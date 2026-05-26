@@ -1,3 +1,4 @@
+. ../core/notify_tools.ps1
 # =====================================================================
 # SUB-MENU: PHANTOM NUEVOS - CUERVO
 # =====================================================================
@@ -40,7 +41,7 @@ do {
     switch ($opcion) {
         "1" {
             Write-Host "`n  [!] Iniciando flasheo de equipo nuevo..." -ForegroundColor Cyan
-            python phantom.py
+            python phantom.py; Send-Notification -Title "Phantom" -Message "Flasheo de equipos nuevos finalizado"
             Pause
         }
         "2" {

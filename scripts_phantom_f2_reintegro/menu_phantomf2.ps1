@@ -73,7 +73,7 @@ do {
             Pause
         }
         "0" {
-            exit
+            return
         }
     }
 } while ($true)

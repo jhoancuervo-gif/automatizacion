@@ -1,3 +1,4 @@
+. ../core/notify_tools.ps1
 # =====================================================================
 # MENU: PHANTOM REINTEGRO - CUERVO
 # =====================================================================
@@ -41,7 +42,7 @@ do {
     switch ($opcion) {
         "1" {
             Write-Host "`n  $Rocket [!] Ejecutando REINTEGRO COMPLETO..." -ForegroundColor Cyan
-            python phantom_reintegro.py
+            python phantom_reintegro.py; Send-Notification -Title "Phantom" -Message "Proceso de Reintegro finalizado"
             Pause
         }
         "2" {
