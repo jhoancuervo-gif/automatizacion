@@ -11,6 +11,9 @@ from config import Config
 import sys as _sys
 _sys.path.insert(0, str(Config.BASE_DIR / "core"))
 from mac_backup import MacBackup
+from discord_notifier import DiscordNotifier
+
+discord = DiscordNotifier()
 
 # Registro de la sesión
 sesion_actual = []
@@ -83,6 +86,8 @@ async def main():
     global _mac_backup
     _mac_backup = MacBackup(Config.CURRENT_DIR, "ORBE_NUEVAS", mac_file=Config.MAC_FILE)
 
+    discord.send_ingreso("Orbes Nuevas")
+
     if Config.MAC_FILE.exists():
         open(Config.MAC_FILE, 'w').close()
 
@@ -124,13 +129,19 @@ async def main():
         print(f"🎉 ¡LOTE COMPLETADO! {meta}/{meta} Orbes listas.")
         print(f"📂 MACs disponibles en la raíz para verificar.")
         print(f"==========================================")
+        discord.send_webhook(sesion_actual, meta, "Orbes Nuevas")
         if _mac_backup:
             _mac_backup.export_session()
 
     except KeyboardInterrupt:
         print(f"\n\n🛑 PROCESO DETENIDO POR EL USUARIO")
+        discord.send_webhook(sesion_actual, meta, "Orbes Nuevas", is_interrupted=True)
         if _mac_backup:
             _mac_backup.export_session()
+            
+    except Exception as e:
+        print(f"\n\n🚨 ERROR CRÍTICO: {e}")
+        discord.send_error("Orbes Nuevas", str(e))
 
 if __name__ == "__main__":
     asyncio.run(main())

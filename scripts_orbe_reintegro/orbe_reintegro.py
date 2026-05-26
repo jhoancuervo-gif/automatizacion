@@ -8,83 +8,11 @@ import json
 import urllib.request
 from datetime import datetime
 from config import Config
+import sys as _sys
+_sys.path.insert(0, str(Config.BASE_DIR / "core"))
+from discord_notifier import DiscordNotifier
 
-EQUIPO_MAPEO = {
-    "MPC-1OCAK8IK9CP": "Rey",
-    "DESKTOP-PT8UMBI": "Cuervonv",
-    "ALVARO": "Alvaro",
-    "DESKTOP-4D3P5N2": "Esteban",
-    "MPC-17KT4458H7R": "Kevin",
-    "DESKTOP-7D3G6V0": "Felipe",
-    "DESKTOP-R1IDN86": "Paula Andrea",
-    "MPC-71225UVI7HG": "Bryan",
-    "USUARIO-IO29QUF": "FlechasJuan",
-    "DESKTOP-5FNCEON": "Yeison",
-    "WINDOWS-OBOHUKI": "Santiago",
-    "MPC-A5584AEIOOK": "Oscar",
-    "MPC-175K2LHCBFV": "Juan Marin",
-    "DESKTOP-A-VALLE": "Jhon Vallejo"
-}
-
-def get_alias():
-    """Obtiene el nombre mapeado del equipo actual"""
-    hostname = os.getenv('COMPUTERNAME', 'Desconocido')
-    return EQUIPO_MAPEO.get(hostname, hostname)
-
-def send_ingreso():
-    """Notifica al canal de ingreso cuando alguien abre el script"""
-    if not Config.WEBHOOK_INGRESO:
-        return
-    try:
-        nombre_visual = get_alias()
-        data = {
-            "embeds": [{
-                "title": "🟢 Ingreso al Script",
-                "color": 5763719,
-                "fields": [
-                    {"name": "📋 Script", "value": "**Orbe Reintegro**", "inline": True},
-                    {"name": "💻 Operador", "value": f"**{nombre_visual}**", "inline": True},
-                    {"name": "⏰ Hora de ingreso", "value": datetime.now().strftime('%d/%m/%Y %H:%M:%S'), "inline": False}
-                ],
-                "footer": {"text": "Sistema de Automatización - Soluciones Cuervo"}
-            }]
-        }
-        req = urllib.request.Request(Config.WEBHOOK_INGRESO, data=json.dumps(data).encode('utf-8'),
-                                     headers={'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0'})
-        with urllib.request.urlopen(req) as response:
-            pass
-    except Exception:
-        pass
-
-def send_webhook(macs, tipo="Orbe Reintegro"):
-    """Envía un resumen de las MACs flasheadas a Discord"""
-    if not Config.WEBHOOK_PRODUCCION or not macs:
-        return
-
-    try:
-        nombre_visual = get_alias()
-        lista_macs = "\n".join([f"• `{mac}`" for mac in macs])
-        
-        data = {
-            "embeds": [{
-                "title": f"🔮 Lote de {tipo} Flasheados",
-                "color": 3447003, # Azul
-                "fields": [
-                    {"name": "🔢 Equipos Procesados", "value": f"**{len(macs)}**", "inline": True},
-                    {"name": "💻 Procesado por", "value": f"**{nombre_visual}**", "inline": True},
-                    {"name": "📍 Direcciones MAC", "value": lista_macs, "inline": False},
-                    {"name": "⏰ Fecha", "value": datetime.now().strftime('%d/%m/%Y %H:%M:%S'), "inline": False}
-                ],
-                "footer": {"text": "Sistema de Automatización - Soluciones Cuervo"}
-            }]
-        }
-        
-        req = urllib.request.Request(Config.WEBHOOK_PRODUCCION, data=json.dumps(data).encode('utf-8'), 
-                                   headers={'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0'})
-        with urllib.request.urlopen(req) as response:
-            pass
-    except Exception:
-        pass
+discord = DiscordNotifier()
 
 def get_local_ip():
     try:
@@ -179,7 +107,7 @@ async def main():
     print(f"\n🚀 ORBE REINTEGRO - MODO NMAP EFICIENTE")
     
     # Notificar ingreso al canal de Discord
-    send_ingreso()
+    discord.send_ingreso("Orbe Reintegro")
 
     mi_ip = get_local_ip()
     gateway_ip = f"{Config.IP_BASE}1"
@@ -236,13 +164,18 @@ async def main():
 
     print(f"\n\n✨ Proceso finalizado. {procesados_exitosos} equipos completados.")
     if macs_procesadas:
-        send_webhook(macs_procesadas)
+        discord.send_webhook(macs_procesadas, len(macs_procesadas), "Orbe Reintegro", is_reintegro=True)
 
 if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
         print("\n⚠️ Proceso cancelado.")
+        # If interrupted, trying to get macs_procesadas isn't easy here unless we make it global. 
+        # But this script is NMAP-based and might not have populated it if we just ctrl+C. Let's send what we can.
+    except Exception as e:
+        print(f"\n\n🚨 ERROR CRÍTICO: {e}")
+        discord.send_error("Orbe Reintegro", str(e))
     finally:
         if Config.MAC_FILE.exists() and os.path.getsize(Config.MAC_FILE) > 0:
             try: os.startfile(Config.MAC_FILE)

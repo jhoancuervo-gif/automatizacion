@@ -8,6 +8,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "core"))
 from mac_backup import MacBackup
+from discord_notifier import DiscordNotifier
 
 # =====================================================================
 # CONFIGURACIÓN DEL SISTEMA (V33 STABLE + LOTE SIMULTÁNEO)
@@ -138,6 +139,9 @@ def flash_process_stable(dev):
     except: return False
 
 def main():
+    discord = DiscordNotifier()
+    discord.send_ingreso("Switch PoE 1Gb Masivo")
+    
     backup = MacBackup(BASE_DIR, "POE_1GB_MASIVO")
     os.system('cls' if os.name == 'nt' else 'clear')
     print(f"{Colors.CYAN}==========================================================")
@@ -146,6 +150,9 @@ def main():
 
     try:
         target = int(input(f"\nEquipos en lote: "))
+    except KeyboardInterrupt:
+        discord.send_webhook([], 0, "Switch PoE 1Gb Masivo", is_interrupted=True)
+        return
     except: return
 
     discovered = []
@@ -245,11 +252,29 @@ def main():
             log(f" [OK] {dev['ip']} regresó al origen.", Colors.GREEN)
 
     backup.export_session()
+    
+    exitos = [dev['mac'] for dev in discovered if dev.get('status') == "EXITO"]
+    discord.send_webhook(exitos, target, "Switch PoE 1Gb Masivo")
+    
     print(f"\n{Colors.GREEN}PROCESO FINALIZADO CON ÉXITO.{Colors.END}")
     for dev in discovered:
-        c = Colors.GREEN if dev['status'] == "EXITO" else Colors.RED
-        print(f" MAC: {dev['mac']} | Status: {c}{dev['status']}{Colors.END}")
+        c = Colors.GREEN if dev.get('status') == "EXITO" else Colors.RED
+        print(f" MAC: {dev['mac']} | Status: {c}{dev.get('status', 'DESCONOCIDO')}{Colors.END}")
     input("\nENTER para salir...")
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("\n\n🛑 PROCESO DETENIDO POR EL USUARIO.")
+        # Attempt to notify interruption
+        try:
+            d = DiscordNotifier()
+            d.send_webhook([], 0, "Switch PoE 1Gb Masivo", is_interrupted=True)
+        except: pass
+    except Exception as e:
+        print(f"\n\n🚨 ERROR CRÍTICO: {e}")
+        try:
+            d = DiscordNotifier()
+            d.send_error("Switch PoE 1Gb Masivo", str(e))
+        except: pass

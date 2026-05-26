@@ -9,78 +9,11 @@ import json
 import urllib.request
 from datetime import datetime
 from config import Config
+import sys as _sys
+_sys.path.insert(0, str(Config.BASE_DIR / "core"))
+from discord_notifier import DiscordNotifier
 
-EQUIPO_MAPEO = {
-    "MPC-1OCAK8IK9CP": "Rey",
-    "DESKTOP-PT8UMBI": "Cuervonv",
-    "ALVARO": "Alvaro",
-    "DESKTOP-4D3P5N2": "Esteban",
-    "MPC-17KT4458H7R": "Kevin",
-    "DESKTOP-7D3G6V0": "Felipe",
-    "DESKTOP-R1IDN86": "Paula Andrea",
-    "MPC-71225UVI7HG": "Bryan",
-    "USUARIO-IO29QUF": "FlechasJuan"
-}
-
-def get_alias():
-    """Obtiene el nombre mapeado del equipo actual"""
-    hostname = os.getenv('COMPUTERNAME', 'Desconocido')
-    return EQUIPO_MAPEO.get(hostname, hostname)
-
-def send_ingreso():
-    """Notifica al canal de ingreso cuando alguien abre el script"""
-    if not Config.WEBHOOK_INGRESO:
-        return
-    try:
-        nombre_visual = get_alias()
-        data = {
-            "embeds": [{
-                "title": "🟢 Ingreso al Script",
-                "color": 5763719,
-                "fields": [
-                    {"name": "📋 Script", "value": "**Phantom F2 Reintegro**", "inline": True},
-                    {"name": "💻 Operador", "value": f"**{nombre_visual}**", "inline": True},
-                    {"name": "⏰ Hora de ingreso", "value": datetime.now().strftime('%d/%m/%Y %H:%M:%S'), "inline": False}
-                ],
-                "footer": {"text": "Sistema de Automatización - Soluciones Cuervo"}
-            }]
-        }
-        req = urllib.request.Request(Config.WEBHOOK_INGRESO, data=json.dumps(data).encode('utf-8'),
-                                     headers={'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0'})
-        with urllib.request.urlopen(req) as response:
-            pass
-    except Exception:
-        pass
-
-def send_webhook(macs, tipo="F2 Reintegro"):
-    """Envía un resumen de las MACs flasheadas a Discord"""
-    if not Config.WEBHOOK_PRODUCCION or not macs:
-        return
-
-    try:
-        nombre_visual = get_alias()
-        lista_macs = "\n".join([f"• `{mac}`" for mac in macs])
-        
-        data = {
-            "embeds": [{
-                "title": f"👻 Lote de Phantoms {tipo} Flasheados",
-                "color": 3447003, # Azul
-                "fields": [
-                    {"name": "🔢 Equipos Procesados", "value": f"**{len(macs)}**", "inline": True},
-                    {"name": "💻 Procesado por", "value": f"**{nombre_visual}**", "inline": True},
-                    {"name": "📍 Direcciones MAC", "value": lista_macs, "inline": False},
-                    {"name": "⏰ Fecha", "value": datetime.now().strftime('%d/%m/%Y %H:%M:%S'), "inline": False}
-                ],
-                "footer": {"text": "Sistema de Automatización - Soluciones Cuervo"}
-            }]
-        }
-        
-        req = urllib.request.Request(Config.WEBHOOK_PRODUCCION, data=json.dumps(data).encode('utf-8'), 
-                                   headers={'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0'})
-        with urllib.request.urlopen(req) as response:
-            pass
-    except Exception:
-        pass
+discord = DiscordNotifier()
 
 sesion_actual = []
 print_lock = asyncio.Lock()
@@ -188,7 +121,7 @@ async def main():
     print(f"\n🚀 PHANTOM REINTEGRO - MOTOR ULTRA-RÁPIDO (PARALELO)")
 
     # Notificar ingreso al canal de Discord
-    send_ingreso()
+    discord.send_ingreso("Phantom F2 Reintegro")
 
     # LIMPIEZA DE ARRANQUE: Asegura que el archivo de la raíz empiece vacío
     if Config.MAC_FILE.exists():
@@ -214,7 +147,7 @@ async def main():
     if sesion_actual:
         print(f"\n✨ Proceso terminado. {len(sesion_actual)} MACs listas en la raíz.")
         # Enviar notificación final
-        send_webhook(sesion_actual)
+        discord.send_webhook(sesion_actual, len(sesion_actual), "Phantom F2 Reintegro", is_reintegro=True)
     else:
         print(f"\n⚠️ No se procesó ninguna MAC correctamente.")
 
@@ -231,4 +164,8 @@ if __name__ == "__main__":
         asyncio.run(main())
     except KeyboardInterrupt:
         print("\n\nAbortado por el usuario.")
+        discord.send_webhook(sesion_actual, len(sesion_actual), "Phantom F2 Reintegro", is_interrupted=True, is_reintegro=True)
         sys.exit(0)
+    except Exception as e:
+        print(f"\n\n🚨 ERROR CRÍTICO: {e}")
+        discord.send_error("Phantom F2 Reintegro", str(e))

@@ -13,82 +13,10 @@ from config import Config
 import sys as _sys
 _sys.path.insert(0, str(Config.BASE_DIR / "core"))
 from mac_backup import MacBackup
+from discord_notifier import DiscordNotifier
 
 _mac_backup = None
-
-EQUIPO_MAPEO = {
-    "MPC-1OCAK8IK9CP": "Rey",
-    "DESKTOP-PT8UMBI": "Cuervonv",
-    "ALVARO": "Alvaro",
-    "DESKTOP-4D3P5N2": "Esteban",
-    "MPC-17KT4458H7R": "Kevin",
-    "DESKTOP-7D3G6V0": "Felipe",
-    "DESKTOP-R1IDN86": "Paula Andrea",
-    "MPC-71225UVI7HG": "Bryan",
-    "USUARIO-IO29QUF": "FlechasJuan",
-    "DESKTOP-5FNCEON": "Yeison",
-    "WINDOWS-OBOHUKI": "Santiago",
-    "MPC-A5584AEIOOK": "Oscar",
-    "MPC-175K2LHCBFV": "Juan Marin",
-    "DESKTOP-A-VALLE": "Jhon Vallejo"
-}
-
-def get_alias():
-    """Obtiene el nombre mapeado del equipo actual"""
-    hostname = os.getenv('COMPUTERNAME', 'Desconocido').upper()
-    return EQUIPO_MAPEO.get(hostname, hostname)
-
-def send_ingreso():
-    """Notifica al canal de ingreso cuando alguien abre el script"""
-    if not Config.WEBHOOK_INGRESO:
-        return
-    try:
-        nombre_visual = get_alias()
-        data = {
-            "embeds": [{
-                "title": "🟢 Ingreso al Script",
-                "color": 5763719,
-                "fields": [
-                    {"name": "📋 Script", "value": "**Phantom F2 Nuevos**", "inline": True},
-                    {"name": "💻 Operador", "value": f"**{nombre_visual}**", "inline": True},
-                    {"name": "⏰ Hora de ingreso", "value": datetime.now().strftime('%d/%m/%Y %H:%M:%S'), "inline": False}
-                ],
-                "footer": {"text": "Sistema de Automatización - Soluciones Cuervo"}
-            }]
-        }
-        req = urllib.request.Request(Config.WEBHOOK_INGRESO, data=json.dumps(data).encode('utf-8'),
-                                     headers={'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0'})
-        with urllib.request.urlopen(req) as response:
-            pass
-    except Exception:
-        pass
-
-def send_webhook(macs, meta):
-    """Envía un resumen de las MACs flasheadas al canal de producción"""
-    if not Config.WEBHOOK_PRODUCCION or not macs:
-        return
-    try:
-        nombre_visual = get_alias()
-        lista_macs = "\n".join([f"• `{mac}`" for mac in macs])
-        data = {
-            "embeds": [{
-                "title": "👻 Lote de Phantoms F2 Nuevos Flasheados",
-                "color": 3066993,
-                "fields": [
-                    {"name": "🔢 Equipos Procesados", "value": f"**{len(macs)} / {meta}**", "inline": True},
-                    {"name": "💻 Procesado por", "value": f"**{nombre_visual}**", "inline": True},
-                    {"name": "📍 Direcciones MAC", "value": lista_macs, "inline": False},
-                    {"name": "⏰ Fecha", "value": datetime.now().strftime('%d/%m/%Y %H:%M:%S'), "inline": False}
-                ],
-                "footer": {"text": "Sistema de Automatización - Soluciones Cuervo"}
-            }]
-        }
-        req = urllib.request.Request(Config.WEBHOOK_PRODUCCION, data=json.dumps(data).encode('utf-8'),
-                                     headers={'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0'})
-        with urllib.request.urlopen(req) as response:
-            pass
-    except Exception:
-        pass
+discord = DiscordNotifier()
 
 # Registro de la sesión
 sesion_actual = []
@@ -187,7 +115,7 @@ async def main():
     _mac_backup = MacBackup(Config.CURRENT_DIR, "PHANTOM_F2_NUEVOS", mac_file=Config.MAC_FILE)
 
     # Notificar ingreso al canal de Discord
-    send_ingreso()
+    discord.send_ingreso("Phantom F2 Nuevos")
 
     # REGLA DE ORO: Respaldar sesión previa y limpiar raíz
     if Config.MAC_FILE.exists() and Config.MAC_FILE.stat().st_size > 0:
@@ -245,15 +173,19 @@ async def main():
         print(f"==========================================")
         
         # Enviar notificación final a Discord
-        send_webhook(sesion_actual, meta)
+        discord.send_webhook(sesion_actual, meta, "Phantom F2 Nuevos")
         if _mac_backup:
             _mac_backup.export_session()
 
     except KeyboardInterrupt:
         print(f"\n\n🛑 PROCESO DETENIDO POR EL USUARIO.")
+        discord.send_webhook(sesion_actual, meta, "Phantom F2 Nuevos", is_interrupted=True)
         if _mac_backup:
             _mac_backup.export_session()
-
+            
+    except Exception as e:
+        print(f"\n\n🚨 ERROR CRÍTICO: {e}")
+        discord.send_error("Phantom F2 Nuevos", str(e))
 
 if __name__ == "__main__":
     asyncio.run(main())
