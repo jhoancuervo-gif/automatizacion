@@ -11,7 +11,7 @@ from urllib.parse import urljoin
 from logger_tools import log_to_master
 
 # Configuración Global
-load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
+load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'), encoding='latin-1')
 
 USERNAME = os.getenv("ISP_USERNAME")
 PASSWORD = os.getenv("ISP_PASSWORD")

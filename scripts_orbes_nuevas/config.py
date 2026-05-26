@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 BASE_DIR = Path(__file__).parent.parent.absolute()
 CURRENT_DIR = Path(__file__).parent.absolute()
 
-load_dotenv(BASE_DIR / '.env')
+load_dotenv(BASE_DIR / '.env', encoding='latin-1')
 
 class Config:
     """Configuración para Orbes Nuevas"""

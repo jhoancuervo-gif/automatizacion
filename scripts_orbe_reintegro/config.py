@@ -7,10 +7,11 @@ BASE_DIR = Path(__file__).parent.parent.absolute()
 CURRENT_DIR = Path(__file__).parent.absolute()
 
 # Cargar el .env que está en la raíz
-load_dotenv(BASE_DIR / ".env")
+load_dotenv(BASE_DIR / ".env", encoding='latin-1')
 
 class Config:
     """Configuración Unificada Orbe"""
+    BASE_DIR = BASE_DIR
     # Archivos en la Raíz
     MAC_FILE = BASE_DIR / "macs.txt"
     BACKUP_DIR = BASE_DIR / "backups_macs"

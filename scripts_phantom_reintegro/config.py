@@ -6,10 +6,11 @@ from dotenv import load_dotenv
 BASE_DIR = Path(__file__).parent.parent.absolute()
 CURRENT_DIR = Path(__file__).parent.absolute()
 
-load_dotenv(BASE_DIR / ".env")
+load_dotenv(BASE_DIR / ".env", encoding='latin-1')
 
 class Config:
     """Configuración Maestra Única de Cuervo"""
+    BASE_DIR = BASE_DIR
     # 1. El archivo maestro acumulativo
     MAC_FILE = BASE_DIR / "macs.txt"
     
