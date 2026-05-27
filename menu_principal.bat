@@ -4,7 +4,16 @@ cd /d "%~dp0"
 title SISTEMA DE AUTOMATIZACION - CUERVO
 
 echo [1/3] Verificando estado del repositorio...
-git fetch origin --quiet
+
+:: Evitar que git se cuelgue esperando credenciales por teclado
+set GIT_TERMINAL_PROMPT=0
+
+:: Fetch con limite de velocidad: si la red se estanca (<1KB/s por 8s), cancela y continua
+git -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=8 fetch origin --quiet
+if %errorlevel% neq 0 (
+    echo [!] No se pudo contactar GitHub a tiempo. Se omite la sincronizacion.
+    goto :SkipSync
+)
 
 :: Detectar si existen cambios locales (nuevos, modificados o eliminados)
 set _CAMBIOS_LOCALES=0
@@ -24,6 +33,8 @@ if "%_CAMBIOS_LOCALES%"=="1" (
     )
 )
 set _CAMBIOS_LOCALES=
+
+:SkipSync
 
 echo [2/3] Ejecutando diagnostico de salud...
 powershell -ExecutionPolicy Bypass -File "core\system_doctor.ps1"
