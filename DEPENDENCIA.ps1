@@ -44,9 +44,24 @@ try {
     $venvPath = Join-Path $PSScriptRoot ".venv"
     $pythonVenv = Join-Path $venvPath "Scripts\python.exe"
     
-    if (-Not (Test-Path $venvPath)) {
+    # Un venv es VALIDO solo si existe Scripts\python.exe (no basta con la carpeta).
+    # Si la carpeta existe pero esta incompleta/danada, se recrea.
+    if (-Not (Test-Path $pythonVenv)) {
+        if (Test-Path $venvPath) {
+            Write-Host "Entorno virtual incompleto o danado. Recreando..." -ForegroundColor Yellow
+            Remove-Item $venvPath -Recurse -Force -ErrorAction SilentlyContinue
+        }
         Write-Host "Creando entorno virtual en $venvPath..." -ForegroundColor Cyan
         & $pythonCmd -m venv "$venvPath"
+
+        # Verificar que realmente quedo creado
+        if (-Not (Test-Path $pythonVenv)) {
+            throw "No se pudo crear el entorno virtual en '$venvPath'. Verifique que Python tenga el modulo 'venv' y permisos de escritura en la carpeta del proyecto."
+        }
+        Write-Host "OK: Entorno virtual creado correctamente." -ForegroundColor Green
+    }
+    else {
+        Write-Host "OK: Entorno virtual ya existe y es valido." -ForegroundColor Green
     }
 
     # 3. INSTALAR DEPENDENCIAS
