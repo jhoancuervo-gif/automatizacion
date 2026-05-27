@@ -35,7 +35,7 @@ while ($true) {
     Write-Host "=========================================================" -ForegroundColor Magenta
 
     $Opcion = Read-Host "`nElige una opcion (1, 2, 3 o 4)"
-    if ($Opcion -eq "4") { break }
+    if ($Opcion -eq "4") { return }
     if ($Opcion -notmatch "^[123]$") { continue }
 
     $CantidadMesa = 0

@@ -40,7 +40,7 @@ while ($true) {
     Mostrar-MenuPoe1
     $opcion = Read-Host
 
-    if ($opcion -eq "0") { break }
+    if ($opcion -eq "0") { return }
 
     switch ($opcion) {
         "1" {

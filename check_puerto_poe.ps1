@@ -154,7 +154,7 @@ while ($true) {
     $selection = $currentSelection
     $currentSelection = "" # Restablecer para la proxima vez
     
-    if ($selection -eq "0") { exit }
+    if ($selection -eq "0") { return }
     if (-not $selectionMap.ContainsKey($selection)) {
         Write-Host "  [!] ID '$selection' no valido." -ForegroundColor $R
         Start-Sleep -Seconds 1
