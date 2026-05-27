@@ -3,8 +3,8 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 # Localizar la raíz del proyecto (sube un nivel desde la carpeta de Orbes)
-BASE_DIR = Path(__file__).parent.parent.absolute()
-CURRENT_DIR = Path(__file__).parent.absolute()
+BASE_DIR = Path(__file__).resolve().parent.parent
+CURRENT_DIR = Path(__file__).resolve().parent
 
 # Cargar el .env que está en la raíz
 load_dotenv(BASE_DIR / ".env", encoding='latin-1')

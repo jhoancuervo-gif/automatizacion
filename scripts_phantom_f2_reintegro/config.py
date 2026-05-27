@@ -3,8 +3,8 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 # Ubicación de las carpetas (Sube un nivel a la raíz)
-BASE_DIR = Path(__file__).parent.parent.absolute()
-CURRENT_DIR = Path(__file__).parent.absolute()
+BASE_DIR = Path(__file__).resolve().parent.parent
+CURRENT_DIR = Path(__file__).resolve().parent
 
 load_dotenv(BASE_DIR / ".env", encoding='latin-1')
 
