@@ -42,7 +42,7 @@ $Wrench = "$([char]0xD83D)$([char]0xDD27)"
 # Cachear IP una sola vez al cargar la aplicacion
 $script:IP = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.InterfaceAlias -like "*Ethernet*" -or $_.InterfaceAlias -like "*Wi-Fi*" } | Select-Object -First 1).IPAddress
 
-# --- DEFINICION DE NOMBRE VISUAL (MAPEO) ---
+# --- DEFINICION DE NOMBRE VISUAL (MAPEO desde equipos.json con fallback) ---
 $EquipoMapeo = @{
     "MPC-1OCAK8IK9CP" = "Rey"
     "DESKTOP-PT8UMBI" = "Cuervonv"
@@ -58,6 +58,17 @@ $EquipoMapeo = @{
     "MPC-A5584AEIOOK" = "Oscar"
     "MPC-175K2LHCBFV" = "Juan Marin"
     "DESKTOP-A-VALLE" = "Jhon Vallejo"
+}
+# Si existe equipos.json, usarlo como fuente de verdad (un solo lugar para editar)
+$EquiposJson = Join-Path $RootPath "equipos.json"
+if (Test-Path $EquiposJson) {
+    try {
+        $jsonMap = Get-Content $EquiposJson -Raw | ConvertFrom-Json
+        $tmp = @{}
+        $jsonMap.PSObject.Properties | ForEach-Object { $tmp[$_.Name] = $_.Value }
+        if ($tmp.Count -gt 0) { $EquipoMapeo = $tmp }
+    }
+    catch { }
 }
 $script:NombreVisual = $env:COMPUTERNAME
 if ($EquipoMapeo.ContainsKey($env:COMPUTERNAME)) {

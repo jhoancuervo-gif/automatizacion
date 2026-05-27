@@ -27,10 +27,24 @@ class DiscordNotifier:
         self.error_url = error_url or os.getenv("DISCORD_WEBHOOK_ERRORES", "")
 
     @staticmethod
+    def _load_mapeo():
+        """Carga el mapeo desde equipos.json (fuente de verdad) con fallback interno."""
+        try:
+            ruta = os.path.join(os.path.dirname(__file__), '..', 'equipos.json')
+            if os.path.exists(ruta):
+                with open(ruta, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                if data:
+                    return {k.upper(): v for k, v in data.items()}
+        except Exception:
+            pass
+        return {k.upper(): v for k, v in DiscordNotifier.EQUIPO_MAPEO.items()}
+
+    @staticmethod
     def get_alias():
         """Obtiene el nombre mapeado del equipo actual"""
         hostname = os.getenv('COMPUTERNAME', 'Desconocido').upper()
-        return DiscordNotifier.EQUIPO_MAPEO.get(hostname, hostname)
+        return DiscordNotifier._load_mapeo().get(hostname, hostname)
 
     def _send(self, webhook_url, data):
         if not webhook_url:

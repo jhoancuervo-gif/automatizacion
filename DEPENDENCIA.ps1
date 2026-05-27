@@ -48,10 +48,21 @@ try {
 
     # 3. INSTALAR DEPENDENCIAS
     Write-Host "`n[3/6] Instalando dependencias..." -ForegroundColor Yellow
-    $packages = @("requests", "beautifulsoup4", "asyncssh", "python-dotenv", "selenium")
-    foreach ($pkg in $packages) {
-        Write-Host "Instalando $pkg..." -ForegroundColor Cyan
-        & $pythonVenv -m pip install $pkg --quiet
+    $reqFile = Join-Path $PSScriptRoot "requirements.txt"
+    if (-not (Test-Path $reqFile)) {
+        # Compatibilidad: si el script se mueve a una subcarpeta
+        $reqFile = Join-Path (Split-Path $PSScriptRoot -Parent) "requirements.txt"
+    }
+    if (Test-Path $reqFile) {
+        Write-Host "Instalando desde requirements.txt..." -ForegroundColor Cyan
+        & $pythonVenv -m pip install -r "$reqFile" --quiet
+    } else {
+        Write-Host "AVISO: No se encontro requirements.txt. Usando lista interna." -ForegroundColor Yellow
+        $packages = @("requests", "beautifulsoup4", "asyncssh", "python-dotenv", "selenium")
+        foreach ($pkg in $packages) {
+            Write-Host "Instalando $pkg..." -ForegroundColor Cyan
+            & $pythonVenv -m pip install $pkg --quiet
+        }
     }
 
     # 4. VERIFICAR NMAP

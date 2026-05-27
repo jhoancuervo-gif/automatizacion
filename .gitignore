@@ -1,6 +1,6 @@
 # === Archivos Sensibles y Configuración Local ===
 # No subir credenciales ni configuraciones específicas de tu PC
-#.env
+.env
 *.key
 *.pem
 *.p12
@@ -38,6 +38,10 @@ Thumbs.db
 desktop.ini
 
 # === Binarios Pesados ===
-# Firmware_*.bin  <-- Borra esta línea o ponle un # al principio
-*.exe
+# NOTA: Los firmware (.bin) y herramientas (.exe) se mantienen rastreados
+# por ahora para no romper su distribucion. Si en el futuro se distribuyen
+# por otro medio, descomentar las siguientes lineas y ejecutar:
+#   git rm --cached <archivo>
+# Firmware_*.bin
+# *.exe
 *.iso
