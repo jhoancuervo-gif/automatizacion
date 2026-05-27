@@ -38,7 +38,10 @@ try {
 
     # 2. ENTORNO VIRTUAL
     Write-Host "`n[2/6] Verificando entorno virtual..." -ForegroundColor Yellow
-    $venvPath = Join-Path (Split-Path $PSScriptRoot -Parent) ".venv"
+    # DEPENDENCIA.ps1 vive en la RAIZ del proyecto, asi que .venv va en $PSScriptRoot.
+    # (Antes usaba Split-Path -Parent y creaba el .venv un nivel arriba, en el Escritorio,
+    #  por eso system_doctor.ps1 y menu_principal.ps1 lo reportaban como "no encontrado".)
+    $venvPath = Join-Path $PSScriptRoot ".venv"
     $pythonVenv = Join-Path $venvPath "Scripts\python.exe"
     
     if (-Not (Test-Path $venvPath)) {
