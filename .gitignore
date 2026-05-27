@@ -14,6 +14,18 @@ macs
 # Archivos basura o temporales detectados en tu carpeta[cite: 1]
 .txt
 
+# === Archivos de RUNTIME por maquina (logs/datos que cambian con el uso) ===
+# IMPORTANTE: estos archivos NO deben versionarse. Si se rastrean, las PCs de
+# trabajo los modifican al operar y eso bloquea la auto-sincronizacion del menu.
+error_log.txt
+log_masivo*.txt
+log_macs.txt
+llamado.txt
+mac.txt
+flash_log.csv
+mac_backup.txt
+tvboxes_configurados.txt
+
 # === Logs y Temporales ===
 logs/
 *.log
