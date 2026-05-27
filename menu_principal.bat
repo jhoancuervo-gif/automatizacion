@@ -9,7 +9,7 @@ echo [1/3] Verificando estado del repositorio...
 set GIT_TERMINAL_PROMPT=0
 
 :: Fetch con limite de velocidad: si la red se estanca (<1KB/s por 8s), cancela y continua
-git -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=8 fetch origin --quiet
+git -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=4 fetch origin --quiet
 if %errorlevel% neq 0 (
     echo [!] No se pudo contactar GitHub a tiempo. Se omite la sincronizacion.
     goto :SkipSync
