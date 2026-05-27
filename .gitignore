@@ -1,6 +1,8 @@
 # === Archivos Sensibles y Configuración Local ===
-# No subir credenciales ni configuraciones específicas de tu PC
-.env
+# DECISION DEL EQUIPO: el .env SE versiona para distribuir las credenciales a
+# toda la flota automaticamente (repo privado). Por eso la regla esta desactivada.
+# Si en el futuro se quiere sacar de Git: descomentar ".env" y rotar la contrasena.
+# .env
 *.key
 *.pem
 *.p12
