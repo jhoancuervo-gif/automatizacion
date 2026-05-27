@@ -1,5 +1,6 @@
 @echo off
 title Reparador de Sincronizacion - Reinel
+cd /d "%~dp0"
 echo Limpiando cache y forzando actualizacion...
 git fetch --all
 git reset --hard origin/main
