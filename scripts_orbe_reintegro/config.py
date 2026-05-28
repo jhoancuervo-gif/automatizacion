@@ -22,7 +22,7 @@ class Config:
     # Configuración de Red (Prioriza lo que diga el .env)
     IP_BASE = os.getenv("IP_BASE", "192.168.10.")
     IP_START = int(os.getenv("ORBE_IP_START", os.getenv("IP_START", "200")))
-    IP_END = int(os.getenv("ORBE_IP_END", os.getenv("IP_END", "215")))
+    IP_END = int(os.getenv("ORBE_IP_END", os.getenv("IP_END", "250")))
     
     SSH_PASSWORD = os.getenv("SSH_PASSWORD", "M7h$)Fw3|;63*h?ET")
     FIRMWARE_PATH = CURRENT_DIR / "somosORB2-PROD.bin"

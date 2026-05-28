@@ -25,8 +25,8 @@ class Config:
 
     # Configuración de red
     IP_BASE = os.getenv("IP_BASE", "192.168.10.")
-    IP_START = int(os.getenv("IP_START", "212"))
-    IP_END = int(os.getenv("IP_END", "215"))
+    IP_START = int(os.getenv("IP_START", "200"))
+    IP_END = int(os.getenv("IP_END", "250"))
     SSH_PASSWORD = os.getenv("SSH_PASSWORD", "M7h$)Fw3|;63*h?ET")
     FIRMWARE_PATH = CURRENT_DIR / "somos-openwrt-24.10.5-somosfw-mediatek-filogic-somos_phantomf2.bin"
     # Notificaciones Discord
