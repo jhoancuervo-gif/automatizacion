@@ -19,7 +19,8 @@ $M = "Magenta"; $W = "White"; $C = "Cyan"; $Y = "Yellow"; $G = "Green"; $R = "Re
 
 # Cachear Hostname y mapeo (desde equipos.json con fallback interno)
 $EquipoMapeo = @{ "MPC-1OCAK8IK9CP" = "Rey"; "DESKTOP-PT8UMBI" = "Cuervonv"; "ALVARO" = "Alvaro"; "DESKTOP-4D3P5N2" = "Esteban"; "MPC-17KT4458H7R" = "Kevin"; "DESKTOP-7D3G6V0" = "Felipe"; "DESKTOP-R1IDN86" = "Paula Andrea"; "MPC-71225UVI7HG" = "Bryan"; "USUARIO-IO29QUF" = "FlechasJuan"; "DESKTOP-5FNCEON" = "Yeison"; "WINDOWS-OBOHUKI" = "Santiago"; "MPC-A5584AEIOOK" = "Oscar"; "MPC-175K2LHCBFV" = "Juan Marin"; "DESKTOP-A-VALLE" = "Jhon Vallejo" }
-$EquiposJson = Join-Path $PSScriptRoot "equipos.json"
+# equipos.json esta en la raiz del proyecto (un nivel arriba de Herramientas/)
+$EquiposJson = Join-Path (Split-Path $PSScriptRoot -Parent) "equipos.json"
 if (Test-Path $EquiposJson) {
     try {
         $jsonMap = Get-Content $EquiposJson -Raw | ConvertFrom-Json

@@ -38,10 +38,10 @@ try {
 
     # 2. ENTORNO VIRTUAL
     Write-Host "`n[2/6] Verificando entorno virtual..." -ForegroundColor Yellow
-    # DEPENDENCIA.ps1 vive en la RAIZ del proyecto, asi que .venv va en $PSScriptRoot.
-    # (Antes usaba Split-Path -Parent y creaba el .venv un nivel arriba, en el Escritorio,
-    #  por eso system_doctor.ps1 y menu_principal.ps1 lo reportaban como "no encontrado".)
-    $venvPath = Join-Path $PSScriptRoot ".venv"
+    # DEPENDENCIA.ps1 vive en Herramientas/, asi que la raiz del proyecto es el PADRE.
+    # El .venv debe quedar en la raiz (donde system_doctor.ps1 y menu_principal.ps1 lo buscan).
+    $ProjectRoot = Split-Path $PSScriptRoot -Parent
+    $venvPath = Join-Path $ProjectRoot ".venv"
     $pythonVenv = Join-Path $venvPath "Scripts\python.exe"
     
     # Un venv es VALIDO solo si existe Scripts\python.exe (no basta con la carpeta).
@@ -66,11 +66,8 @@ try {
 
     # 3. INSTALAR DEPENDENCIAS
     Write-Host "`n[3/6] Instalando dependencias..." -ForegroundColor Yellow
-    $reqFile = Join-Path $PSScriptRoot "requirements.txt"
-    if (-not (Test-Path $reqFile)) {
-        # Compatibilidad: si el script se mueve a una subcarpeta
-        $reqFile = Join-Path (Split-Path $PSScriptRoot -Parent) "requirements.txt"
-    }
+    # requirements.txt vive en la raiz del proyecto (no en Herramientas/).
+    $reqFile = Join-Path $ProjectRoot "requirements.txt"
     if (Test-Path $reqFile) {
         Write-Host "Instalando desde requirements.txt..." -ForegroundColor Cyan
         & $pythonVenv -m pip install -r "$reqFile" --quiet
