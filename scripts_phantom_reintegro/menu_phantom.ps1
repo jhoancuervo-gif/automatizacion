@@ -48,7 +48,7 @@ do {
         "2" {
             Write-Host "`n  $Search --- VERIFICAR MACs PORTAL ---" -ForegroundColor Cyan
             if (Test-Path "..\macs.txt") {
-                python verificar_macs_portal.py
+                python ../core/portal_tools.py verify --file ../macs.txt
             } else {
                 Write-Host "  [-] ERROR: No hay archivo macs.txt." -ForegroundColor Red
             }
@@ -57,7 +57,7 @@ do {
         "3" {
             Write-Host "`n  $Warning --- ELIMINAR MACs PORTAL ---" -ForegroundColor Red
             if (Test-Path "..\macs.txt") {
-                python eliminar_macs_portal.py
+                python ../core/eliminar_macs.py
             } else {
                 Write-Host "  [-] ERROR: No hay archivo macs.txt." -ForegroundColor Red
             }

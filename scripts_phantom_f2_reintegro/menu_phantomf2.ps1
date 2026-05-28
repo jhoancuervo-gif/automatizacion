@@ -66,7 +66,7 @@ do {
             Write-Host "`n  $Warning --- ELIMINAR MACs PORTAL (F2) ---" -ForegroundColor Red
             $macsFile = Join-Path $RootPath "macs.txt"
             if (Test-Path $macsFile) {
-                python ../core/portal_tools.py delete --file ../macs.txt
+                python ../core/eliminar_macs.py
             } else {
                 Write-Host "  [-] ERROR: No hay archivo macs.txt para eliminar." -ForegroundColor Red
             }

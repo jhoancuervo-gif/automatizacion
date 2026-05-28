@@ -8,18 +8,32 @@ def login_session():
     session = requests.Session()
     session.headers.update({'User-Agent': 'Mozilla/5.0'})
     try:
-        res = session.get(PortalConfig.LOGIN_URL)
+        res = session.get(PortalConfig.LOGIN_URL, timeout=15)
         soup = BeautifulSoup(res.text, 'html.parser')
-        csrf = soup.find('input', {'name': 'csrfmiddlewaretoken'})['value']
+        token_input = soup.find('input', {'name': 'csrfmiddlewaretoken'})
+        if not token_input:
+            print("❌ No se encontró el token CSRF (¿portal caído o cambió la página de login?).")
+            return None
+        csrf = token_input['value']
         payload = {
             'username': PortalConfig.USERNAME,
             'password': PortalConfig.PASSWORD,
             'csrfmiddlewaretoken': csrf,
             'next': '/admin/'
         }
-        session.post(PortalConfig.LOGIN_URL, data=payload, headers={'Referer': PortalConfig.LOGIN_URL})
+        post = session.post(PortalConfig.LOGIN_URL, data=payload, headers={'Referer': PortalConfig.LOGIN_URL}, timeout=15)
+        if '/login/' in post.url:
+            print("❌ Credenciales rechazadas por el portal. Revise ISP_USERNAME / ISP_PASSWORD en el archivo .env")
+            return None
         return session
-    except Exception:
+    except requests.exceptions.Timeout:
+        print("❌ Tiempo de espera agotado al contactar el portal (red lenta o portal caído). Intente de nuevo.")
+        return None
+    except requests.exceptions.ConnectionError:
+        print("❌ No se pudo conectar al portal (sin internet o portal inaccesible).")
+        return None
+    except Exception as e:
+        print(f"❌ Error inesperado en login: {type(e).__name__} -> {e}")
         return None
 
 
@@ -58,7 +72,7 @@ def main():
     print(f"Iniciando sesión en el portal...")
     session = login_session()
     if not session:
-        print("❌ Error de conexión o credenciales.")
+        # El detalle del error ya fue impreso por login_session()
         return
     print(f"✅ Sesión iniciada. Verificando {len(macs)} equipos...\n")
 

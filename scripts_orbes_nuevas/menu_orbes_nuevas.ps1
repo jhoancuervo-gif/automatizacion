@@ -1,4 +1,5 @@
-﻿$host.ui.RawUI.WindowTitle = "SUB-MENU: ORBES NUEVAS - CUERVO"
+﻿. ../core/notify_tools.ps1
+$host.ui.RawUI.WindowTitle = "SUB-MENU: ORBES NUEVAS - CUERVO"
 
 function Mostrar-MenuOrbesN {
     Clear-Host
@@ -30,12 +31,12 @@ do {
     switch ($opcion) {
         "1" {
             Write-Host "`n  [!] Iniciando flasheo automático de Orbes..." -ForegroundColor Cyan
-            python orbe.py
+            python orbe.py; Send-Notification -Title "Orbes Nuevas" -Message "Flasheo de Orbes finalizado"
             cmd.exe /c pause
         }
         "2" {
             Write-Host "`n  [!] Consultando portal (macs.txt en raiz)..." -ForegroundColor Cyan
-            python verificar_macs_portal.py
+            python ../core/portal_tools.py verify --file ../macs.txt
             cmd.exe /c pause
         }
         "0" { return }

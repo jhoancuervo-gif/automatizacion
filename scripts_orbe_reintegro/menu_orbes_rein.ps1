@@ -1,3 +1,4 @@
+. ../core/notify_tools.ps1
 $ErrorActionPreference = "SilentlyContinue"
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $host.ui.RawUI.WindowTitle = "SUB-MENU: ORBE REINTEGRO - CUERVO"
@@ -40,18 +41,18 @@ do {
     switch ($opcion) {
         "1" {
             Write-Host "`n  [!] Iniciando proceso de flasheo de Orbes..." -ForegroundColor Cyan
-            python orbe_reintegro.py
+            python orbe_reintegro.py; Send-Notification -Title "Orbe Reintegro" -Message "Proceso de Reintegro finalizado"
             Write-Host "`n  [+] Flasheo finalizado. Reporte abierto en Bloc de notas." -ForegroundColor Green
             Pause
         }
         "2" {
             Write-Host "`n  [!] Consultando portal para equipos en macs.txt..." -ForegroundColor Cyan
-            python verificar_macs_portal.py
+            python ../core/portal_tools.py verify --file ../macs.txt
             Pause
         }
         "3" {
             Write-Host "`n  [!] Iniciando borrado en portal para equipos en macs.txt..." -ForegroundColor Red
-            python eliminar_macs_portal.py
+            python ../core/eliminar_macs.py
             Pause
         }
         "0" { return }
