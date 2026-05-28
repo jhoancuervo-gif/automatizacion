@@ -9,6 +9,11 @@ from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 from urllib.parse import urljoin
 from logger_tools import log_to_master
+try:
+    from discord_notifier import DiscordNotifier
+    _discord = DiscordNotifier()
+except Exception:
+    _discord = None
 
 # Configuración Global
 load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'), encoding='latin-1')
@@ -42,6 +47,9 @@ def login_session():
         return session
     except Exception as e:
         print(f"❌ Error de Login: {e}")
+        if _discord:
+            try: _discord.send_error("core/portal_tools.py (login)", str(e))
+            except Exception: pass
         return None
 
 def verify_macs(mac_file):

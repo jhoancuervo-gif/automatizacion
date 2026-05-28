@@ -26,6 +26,10 @@ if (Test-Path $VenvScripts) {
     $env:VIRTUAL_ENV = Join-Path $RootPath ".venv"
 }
 
+# --- CARGAR HELPER DE NOTIFICACION DE ERRORES (Discord) ---
+$DiscordPS = Join-Path $RootPath "core\discord_notifier.ps1"
+if (Test-Path $DiscordPS) { . $DiscordPS }
+
 # --- DEFINICION DE CARACTERES ESPECIALES (MODO COMPATIBLE) ---
 $TL = [char]0x2554; $H = [char]0x2550; $TR = [char]0x2557; $V = [char]0x2551
 $ML = [char]0x2560; $MR = [char]0x2563; $BL = [char]0x255A; $BR = [char]0x255D
@@ -96,13 +100,29 @@ function Ejecutar-Herramienta {
     $Path = Join-Path $RootPath $SubDir
     if (Test-Path $Path) {
         Push-Location $Path
-        if ($ScriptName.EndsWith(".bat")) { cmd.exe /c $ScriptName }
-        elseif ($ScriptName.EndsWith(".ps1")) { & .\$ScriptName }
-        Pop-Location
+        try {
+            if ($ScriptName.EndsWith(".bat")) { cmd.exe /c $ScriptName }
+            elseif ($ScriptName.EndsWith(".ps1")) { & .\$ScriptName }
+        }
+        catch {
+            $errMsg = $_.Exception.Message
+            Write-Host "`n  [!] ERROR en $ScriptName : $errMsg" -ForegroundColor Red
+            if (Get-Command Send-DiscordError -ErrorAction SilentlyContinue) {
+                Send-DiscordError -Script "$SubDir/$ScriptName" -Message $errMsg
+            }
+            Pause
+        }
+        finally {
+            Pop-Location
+        }
     }
-    else { 
-        Write-Host "`n  [!] ERROR: Carpeta '$SubDir' no encontrada." -ForegroundColor Red
-        Pause 
+    else {
+        $msg = "Carpeta '$SubDir' no encontrada."
+        Write-Host "`n  [!] ERROR: $msg" -ForegroundColor Red
+        if (Get-Command Send-DiscordError -ErrorAction SilentlyContinue) {
+            Send-DiscordError -Script "menu_principal/Ejecutar-Herramienta" -Message $msg
+        }
+        Pause
     }
 }
 
@@ -144,7 +164,17 @@ do {
     switch ($opcion) {
         "1" { Ejecutar-Herramienta "scripts_poe_1gb" "iniciarfirmPOE.ps1" }
         "2" { Ejecutar-Herramienta "scripts_poe_2_5gb" "iniciarfirmPOE2.5.ps1" }
-        "3" { $f = Join-Path $RootPath "Herramientas\check_puerto_poe.ps1"; if (Test-Path $f) { & $f } else { Write-Host "Error"; Pause } }
+        "3" {
+            $f = Join-Path $RootPath "Herramientas\check_puerto_poe.ps1"
+            if (Test-Path $f) {
+                try { & $f }
+                catch {
+                    Write-Host "`n  [!] ERROR: $($_.Exception.Message)" -ForegroundColor Red
+                    if (Get-Command Send-DiscordError -ErrorAction SilentlyContinue) { Send-DiscordError -Script "check_puerto_poe.ps1" -Message $_.Exception.Message }
+                    Pause
+                }
+            } else { Write-Host "Error"; Pause }
+        }
         "4" { Ejecutar-Herramienta "scripts_phantom_f2_reintegro" "menu_phantomf2.ps1" }
         "5" { Ejecutar-Herramienta "scripts_phantom_f2" "menu_phantomf2nuevos.ps1" }
         "6" { Ejecutar-Herramienta "scripts_phantom_nuevos" "menu_phantom_nuevos.ps1" }
@@ -153,7 +183,17 @@ do {
         "9" { Ejecutar-Herramienta "scripts_orbe_reintegro" "menu_orbes_rein.ps1" }
         "10" { Ejecutar-Herramienta "configurartvbox_sinapp" "configurar_sinapp.bat" }
         "11" { $L = Join-Path $RootPath "Herramientas\lanzador.bat"; if (Test-Path $L) { Start-Process "$L" -Wait } else { Write-Host "No se encuentra lanzador.bat"; Pause } }
-        "12" { $R = Join-Path $RootPath "core\reparar_red.ps1"; if (Test-Path $R) { & $R } else { Write-Host "Error"; Pause } }
+        "12" {
+            $R = Join-Path $RootPath "core\reparar_red.ps1"
+            if (Test-Path $R) {
+                try { & $R }
+                catch {
+                    Write-Host "`n  [!] ERROR: $($_.Exception.Message)" -ForegroundColor Red
+                    if (Get-Command Send-DiscordError -ErrorAction SilentlyContinue) { Send-DiscordError -Script "reparar_red.ps1" -Message $_.Exception.Message }
+                    Pause
+                }
+            } else { Write-Host "Error"; Pause }
+        }
         "0" { exit }
     }
 } while ($true)

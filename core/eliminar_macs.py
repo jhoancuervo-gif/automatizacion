@@ -15,6 +15,11 @@ from urllib.parse import urljoin
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 from concurrent.futures import ThreadPoolExecutor, as_completed
+try:
+    from discord_notifier import DiscordNotifier
+    _discord = DiscordNotifier()
+except Exception:
+    _discord = None
 
 # =========================
 # CONFIGURACION
@@ -120,12 +125,21 @@ def login_session():
         return None
     except requests.exceptions.Timeout:
         print("   ❌ [LOGIN] Tiempo de espera agotado al contactar el portal.")
+        if _discord:
+            try: _discord.send_error("core/eliminar_macs.py", "Timeout al contactar el portal")
+            except Exception: pass
         return None
     except requests.exceptions.ConnectionError:
         print("   ❌ [LOGIN] No se pudo conectar al portal (sin internet o portal inaccesible).")
+        if _discord:
+            try: _discord.send_error("core/eliminar_macs.py", "ConnectionError: portal inaccesible")
+            except Exception: pass
         return None
     except Exception as e:
         print(f"   ❌ [LOGIN] Error de red: {e}")
+        if _discord:
+            try: _discord.send_error("core/eliminar_macs.py", str(e))
+            except Exception: pass
         return None
 
 

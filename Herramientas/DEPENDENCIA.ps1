@@ -99,8 +99,26 @@ try {
     Write-Host "=========================================" -ForegroundColor Cyan
 
 } catch {
+    $errMsg = $_.Exception.Message
     Write-Host "`nERROR DETECTADO:" -ForegroundColor Red
-    Write-Host $($_.Exception.Message) -ForegroundColor Red
+    Write-Host $errMsg -ForegroundColor Red
+    # Notificar a Discord (canal de errores), si el helper esta disponible
+    $DiscordPS = Join-Path (Split-Path $PSScriptRoot -Parent) "core\discord_notifier.ps1"
+    if (Test-Path $DiscordPS) {
+        . $DiscordPS
+        # Cargar .env si aun no esta en el entorno (cuando se ejecuta fuera del menu)
+        if (-not $env:DISCORD_WEBHOOK_ERRORES) {
+            $envFile = Join-Path (Split-Path $PSScriptRoot -Parent) ".env"
+            if (Test-Path $envFile) {
+                Get-Content $envFile | ForEach-Object {
+                    if ($_ -match '^\s*([^#][^=]*)\s*=\s*(.*)$') {
+                        [Environment]::SetEnvironmentVariable($matches[1].Trim(), $matches[2].Trim().Trim('"'), "Process")
+                    }
+                }
+            }
+        }
+        Send-DiscordError -Script "DEPENDENCIA.ps1 (Instalar Dependencias)" -Message $errMsg
+    }
 } finally {
     Write-Host "`nPresiona cualquier tecla para salir..."
     $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
