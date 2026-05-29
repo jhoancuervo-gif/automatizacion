@@ -36,11 +36,11 @@ function Get-AdapterIP {
     param([int]$Index)
     if ($Index -gt 0) {
         $ip = (Get-NetIPAddress -InterfaceIndex $Index -AddressFamily IPv4 -ErrorAction SilentlyContinue | Select-Object -First 1).IPAddress
-        return if ($null -eq $ip) { "---.---.---.---" } else { $ip }
+        if ($null -eq $ip) { return "---.---.---.---" } else { return $ip }
     }
     # IP por defecto si no hay seleccion (el primer ethernet/wifi con IP)
     $ip = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.InterfaceAlias -like "*Ethernet*" -or $_.InterfaceAlias -like "*Wi-Fi*" -or $_.InterfaceAlias -like "*WiFi*" } | Select-Object -First 1).IPAddress
-    return if ($null -eq $ip) { "---.---.---.---" } else { $ip }
+    if ($null -eq $ip) { return "---.---.---.---" } else { return $ip }
 }
 
 function Mostrar-Encabezado {
