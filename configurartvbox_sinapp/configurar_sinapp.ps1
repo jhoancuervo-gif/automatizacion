@@ -1,5 +1,5 @@
 ﻿# ==============================================================================
-# ESTACIÓN DE TRABAJO CUERVO - V2.46 (AGREGADA OPCIÓN 3: OCULTAR DEV MENU)
+# ESTACIÓN DE TRABAJO CUERVO - V2.50 (OPCIÓN 4 CON REINICIO AUTOMÁTICO)
 # ==============================================================================
 
 $scriptDir = $PSScriptRoot
@@ -25,18 +25,19 @@ if (-not $miIP_Detectada) { $miIP_Detectada = "0.0.0.0" }
 while ($true) {
     Clear-Host
     Write-Host "=========================================================" -ForegroundColor Magenta
-    Write-Host "    ESTACION DE TRABAJO CUERVO - V2.46 [MULTI-TAREA]     " -ForegroundColor Magenta
+    Write-Host "    ESTACION DE TRABAJO CUERVO - V2.50 [MULTI-TAREA]     " -ForegroundColor Magenta
     Write-Host "    IP PC: $miIP_Detectada | DHCP: .200-.250            " -ForegroundColor Gray
     Write-Host "=========================================================" -ForegroundColor Magenta
     Write-Host " 1. Configurar y Limpiar App SOMOS (Filtra y Reporta MDM)" -ForegroundColor Cyan
     Write-Host " 2. HARD RESET / Borrado de Fabrica (Fuerza MDM + Clean)" -ForegroundColor Yellow
     Write-Host " 3. Solo OCULTAR Opciones de Desarrollador (Equipos listos)" -ForegroundColor Green
-    Write-Host " 4. Salir" -ForegroundColor Red
+    Write-Host " 4. Solo ELIMINAR App SomosTV + REINICIAR (Aplica a TODO)" -ForegroundColor DarkCyan
+    Write-Host " 5. Salir" -ForegroundColor Red
     Write-Host "=========================================================" -ForegroundColor Magenta
 
-    $Opcion = Read-Host "`nElige una opcion (1, 2, 3 o 4)"
-    if ($Opcion -eq "4") { return }
-    if ($Opcion -notmatch "^[123]$") { continue }
+    $Opcion = Read-Host "`nElige una opcion (1, 2, 3, 4 o 5)"
+    if ($Opcion -eq "5") { return }
+    if ($Opcion -notmatch "^[1234]$") { continue }
 
     $CantidadMesa = 0
     $inputUser = Read-Host "¿Cuantos equipos TOTALES tienes conectados físicamente en la mesa?"
@@ -45,7 +46,12 @@ while ($true) {
     &$adbExe kill-server 2>$null
     &$adbExe start-server 2>$null
 
-    $AccionPendiente = if ($Opcion -eq "1") { "CONFIGURAR" } elseif ($Opcion -eq "2") { "FORMATEAR" } else { "OCULTAR MENU DEV" }
+    $AccionPendiente = switch ($Opcion) {
+        "1" { "CONFIGURAR" }
+        "2" { "FORMATEAR" }
+        "3" { "OCULTAR MENU DEV" }
+        "4" { "DESINSTALAR SOMOSTV Y REINICIAR" }
+    }
     Write-Host "`n🔍 MODO CENTINELA: Analizando lote de $CantidadMesa equipos para $AccionPendiente..." -ForegroundColor Cyan
     
     $ipsEncontradas = @()
@@ -83,6 +89,9 @@ while ($true) {
                             if ($modoMenu -eq "2") {
                                 return "MDM_RESET|$targetIp|$mac"
                             }
+                            elseif ($modoMenu -eq "4") {
+                                return "CLEAN|$targetIp|$mac"
+                            }
                             else {
                                 return "MDM_SKIP|$targetIp|$mac"
                             }
@@ -110,7 +119,7 @@ while ($true) {
                 if (($ipsEncontradas.Count + $ipsDescartadasMDM.Count) -lt $CantidadMesa) {
                     if ($status -eq "CLEAN" -and $ipsEncontradas -notcontains $ipResult) {
                         $ipsEncontradas += $ipResult
-                        Write-Host "  [+] ADB LISTO: $ipResult (Limpio)" -ForegroundColor Green
+                        Write-Host "  [+] ADB LISTO: $ipResult" -ForegroundColor Green
                         [System.Console]::Beep(800, 150)
                     }
                     elseif ($status -eq "MDM_RESET" -and $ipsEncontradas -notcontains $ipResult) {
@@ -158,7 +167,12 @@ while ($true) {
         continue
     }
 
-    $AccionTxt = if ($Opcion -eq "1") { "Configurando quirúrgicamente" } elseif ($Opcion -eq "2") { "Enviando comandos de Factory Reset masivo a" } else { "Ocultando menú de desarrollo en" }
+    $AccionTxt = switch ($Opcion) {
+        "1" { "Configurando quirúrgicamente" }
+        "2" { "Enviando comandos de Factory Reset masivo a" }
+        "3" { "Ocultando menú de desarrollo en" }
+        "4" { "Desinstalando app SomosTV y reiniciando" }
+    }
     Write-Host "`n🚀 Lote cerrado con éxito. $AccionTxt $($ipsEncontradas.Count) equipos simultáneamente..." -ForegroundColor Cyan
     
     $RunspacePool = [runspacefactory]::CreateRunspacePool(1, $MaxParalelo)
@@ -211,9 +225,34 @@ while ($true) {
                     return "OK|$targetIp|$mac"
                 }
                 elseif ($modo -eq "3") {
-                    # Lógica de la NUEVA OPCIÓN 3: Solo ocultar el menú de desarrollador
                     $null = &$pathADB -s $serial shell "settings put global development_settings_enabled 0"
                     return "HIDDEN|$targetIp|$mac"
+                }
+                elseif ($modo -eq "4") {
+                    # Elimina paquetes de SomosTV / Somos TV
+                    $null = &$pathADB -s $serial shell "su 0 mount -o rw,remount /" 2>$null
+                    $null = &$pathADB -s $serial shell "su 0 rm -f /system/preinstall/*omos*.apk" 2>$null
+                    $null = &$pathADB -s $serial shell "su 0 rm -f /system/preinstall/*OMOS*.apk" 2>$null
+
+                    $pkgs = &$pathADB -s $serial shell "pm list packages | grep -i somos"
+                    if ($pkgs) {
+                        foreach ($line in $pkgs) {
+                            $line = $line -replace "`r", ""
+                            if ($line -match "package:(.+)") {
+                                $appId = $matches[1].Trim()
+                                if ($appId -ne "com.somos.mdmagent") {
+                                    $null = &$pathADB -s $serial shell "am force-stop $appId"
+                                    $null = &$pathADB -s $serial shell "pm clear $appId"
+                                    $null = &$pathADB -s $serial shell "pm uninstall --user 0 $appId"
+                                }
+                            }
+                        }
+                    }
+
+                    # REINICIO AGREGADO AQUÍ
+                    Start-Sleep -Milliseconds 500
+                    $null = &$pathADB -s $serial shell reboot
+                    return "UNINSTALLED|$targetIp|$mac"
                 }
                 else {
                     $resetCmd = "am broadcast -a android.intent.action.MASTER_CLEAR -p android --receiver-foreground"
@@ -246,6 +285,10 @@ while ($true) {
         elseif ($data[0] -eq 'HIDDEN') {
             Write-Host "  [OK - MENÚ OCULTO] $($data[1]) -> $($data[2])" -ForegroundColor Green
         }
+        elseif ($data[0] -eq 'UNINSTALLED') {
+            Write-Host "  [OK - SOMOSTV DESINSTALADO Y REINICIADO] $($data[1]) -> $($data[2])" -ForegroundColor Green
+            $macsFinales += $data[2]
+        }
         elseif ($data[0] -eq 'RESET') {
             Write-Host "  [⚠️ EN RESET / RECOVERY] $($data[1]) -> $($data[2])" -ForegroundColor Yellow
         }
@@ -256,11 +299,11 @@ while ($true) {
     }
     $RunspacePool.Close()
 
-    if ($Opcion -eq "1" -and $macsFinales.Count -gt 0) {
+    if (($Opcion -eq "1" -or $Opcion -eq "4") -and $macsFinales.Count -gt 0) {
         $macsFinales | Out-File -FilePath $ArchivoMAC -Encoding UTF8
         $macsFinales | ForEach-Object { "$(Get-Date -Format 'HH:mm') | $_" } | Out-File -FilePath $ArchivoBackup -Append
         
-        Write-Host "`n✅ Reporte generado para equipos configurados." -ForegroundColor Green
+        Write-Host "`n✅ Reporte generado para los equipos procesados." -ForegroundColor Green
         Start-Process notepad.exe $ArchivoMAC
         [System.Console]::Beep(523, 300)
     }

@@ -17,7 +17,7 @@ BASE_IP = "192.168.18.1"
 PASSWORDS = ["admin", "somos123."]
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 FW_FILE = os.path.join(BASE_DIR, "upg_appimage.bin")
-CONFIG_FILE = os.path.join(BASE_DIR, "Configmanage.bin")
+CONFIG_FILE = os.path.join(BASE_DIR, "port8_snmp.bin") # Archivo configuracion
 LOG_FILE = os.path.join(BASE_DIR, "log_masivo.txt")
 MACS_FILE = os.path.join(BASE_DIR, "mac.txt") 
 MAX_WORKERS = 10 
@@ -43,7 +43,6 @@ def log(msg, color=Colors.END):
     except: pass
 
 def obtener_mac(ip):
-    # Lectura nativa Windows
     try:
         res = subprocess.run(["arp", "-a", ip], capture_output=True, text=True)
         match = re.search(r"([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})", res.stdout)
@@ -62,7 +61,7 @@ def verify_http_auth(ip, user, pwd):
         return r.status_code == 200
     except: return False
 
-def esperar_pulso_reinicio(ip, prefix, max_down=12):
+def esperar_pulso_reinicio(ip, prefix, max_down=15):
     start_down = time.time()
     while (time.time() - start_down) < max_down:
         if not verify_http(ip, timeout=0.4): break
@@ -81,21 +80,39 @@ def esperar_equipo_original(ip, max_wait=30):
         time.sleep(1)
     return False
 
+def preparar_flash(session, ip):
+    """Paso previo indispensable en Hellotek antes de subir el binario"""
+    try:
+        url = f"http://{ip}/cgi/toBootLoadUpgrade.cgi"
+        session.post(url, timeout=5)
+        time.sleep(2)
+        return True
+    except:
+        return False
+
 def subir_archivo_turbo(session, url, file_path, prefix):
     try:
+        if not os.path.exists(file_path):
+            log(f"{prefix}Error: No se encuentra el archivo {file_path}", Colors.RED)
+            return False
+
+        filename = os.path.basename(file_path)
         with open(file_path, 'rb') as f:
-            r = session.post(url, files={'FN': f}, timeout=70)
+            files = {'FN': (filename, f, 'application/octet-stream')}
+            r = session.post(url, files=files, timeout=70)
             return r.status_code == 200
     except (requests.exceptions.ConnectionError, requests.exceptions.ReadTimeout):
         return True 
-    except: return False
+    except Exception as e:
+        log(f"{prefix}Excepción en subida: {e}", Colors.RED)
+        return False
 
 def subir_archivo_resiliente(session, url, file_path, prefix):
-    for i in range(2):
+    for i in range(3):
         if subir_archivo_turbo(session, url, file_path, prefix):
             return True
         log(f"{prefix}Reintentando subida (Intento {i+2})...", Colors.YELLOW)
-        time.sleep(2)
+        time.sleep(3)
     return False
 
 def flash_process_stable(dev):
@@ -108,35 +125,48 @@ def flash_process_stable(dev):
         s.auth = dev['auth']
         s.headers.update({"Connection": "close"})
         
-        # 1. FW
+        # 1. PREPARAR FLASH
+        log(f"{prefix}Preparando Flash...", Colors.CYAN)
+        preparar_flash(s, ip)
+
+        # 2. FIRMWARE
         log(f"{prefix}Subiendo FW...", Colors.YELLOW)
         if subir_archivo_resiliente(s, f"http://{ip}/cgi/upg_appimage.bin", FW_FILE, prefix):
-            esperar_pulso_reinicio(ip, prefix, max_down=10)
-        else: return False
+            log(f"{prefix}Procesando Firmware (esperando 20s)...", Colors.CYAN)
+            time.sleep(20)
+            esperar_pulso_reinicio(ip, prefix, max_down=15)
+        else: 
+            log(f"{prefix}Fallo en subida de FW", Colors.RED)
+            return False
 
-        # 2. Config
-        log(f"{prefix}Subiendo Config...", Colors.YELLOW)
+        # 3. CONFIGURACIÓN
+        log(f"{prefix}Subiendo Configuración...", Colors.YELLOW)
         if subir_archivo_resiliente(s, f"http://{ip}/cgi/SG1008.bin", CONFIG_FILE, prefix):
             time.sleep(4)
-            esperar_pulso_reinicio(ip, prefix, max_down=8)
-        else: return False
+            esperar_pulso_reinicio(ip, prefix, max_down=10)
+        else: 
+            log(f"{prefix}Fallo en subida de Config", Colors.RED)
+            return False
 
-        # 3. Seguridad
-        log(f"{prefix}Verificando clave...", Colors.CYAN)
+        # 4. SEGURIDAD Y REINICIO
+        log(f"{prefix}Aplicando seguridad final...", Colors.CYAN)
+        headers_sec = {"Referer": f"http://{ip}/usermng.htm"}
+        data = {"U": "admin", "NU": "admin", "P1": "somos123.", "P2": "somos123."}
+
         for _ in range(3):
             if verify_http_auth(ip, "admin", "somos123."):
                 log(f"{prefix}INTEGRIDAD OK.", Colors.GREEN)
                 dev['auth'] = ("admin", "somos123.")
                 return True
             try:
-                auth_temp = ("admin", "admin")
-                data = {"U": "admin", "NU": "admin", "P1": "somos123.", "P2": "somos123."}
-                requests.post(f"http://{ip}/cgi/usermng.cgi", auth=auth_temp, data=data, timeout=5)
-                time.sleep(2)
+                s.post(f"http://{ip}/cgi/usermng.cgi", data=data, headers=headers_sec, timeout=5)
+                time.sleep(3)
             except: pass
             
         return False
-    except: return False
+    except Exception as e:
+        log(f"{prefix}Error critico en flash_process: {e}", Colors.RED)
+        return False
 
 def main():
     discord = DiscordNotifier()
@@ -189,11 +219,9 @@ def main():
                 ip_index += 1
                 log(f" [✔] INYECTADO: {mac} -> {temp_ip} | Procesando siguiente...", Colors.GREEN)
                 
-                # Vaciado de caché ARP para evitar quedarse colgado en el mismo equipo
                 if os.name == 'nt':
                     subprocess.run(["arp", "-d", BASE_IP], capture_output=True)
                 
-                # Pausa para dar margen de maniobra en la red
                 time.sleep(1.5) 
                     
         time.sleep(0.2) 
@@ -223,33 +251,50 @@ def main():
         discovered[i]['status'] = "EXITO" if results[i] else "FALLO"
 
     log(f"\n--- FASE 3: REVERSIÓN BLINDADA ---", Colors.YELLOW)
+    payload_reversion = {"IP": BASE_IP, "MK": "255.255.255.0", "GW": "0.0.0.0", "MV": "1"}
+    
     for dev in discovered:
         url = f"http://{dev['ip']}/cgi/sysipset.cgi"
-        payload = {"IP": BASE_IP, "MK": "255.255.255.0", "GW": "0.0.0.0", "MV": "1"}
-        for _ in range(2): # Doble intento de seguridad
+        for _ in range(3):
             try: 
-                requests.post(url, auth=dev['auth'], data=payload, timeout=2)
+                requests.post(url, auth=dev['auth'], data=payload_reversion, timeout=2)
                 break
             except (requests.exceptions.ReadTimeout, requests.exceptions.ConnectionError):
-                break # Si corta la conexión, es porque aplicó el cambio con éxito
+                break
             except:
-                time.sleep(1)
-        time.sleep(0.5) # Evita colapsar el switch con 10 IPs simultáneas
+                time.sleep(0.5)
+        time.sleep(0.3)
 
-    log(f"\n--- FASE 4: AUDITORÍA Y REGISTRO ---", Colors.CYAN)
-    time.sleep(5)
+    log(f"\n--- FASE 4: AUDITORÍA Y BARRIDO FINAL ---", Colors.CYAN)
+    time.sleep(3)
+    
+    # SEGURO EXPLICITO: Re-verificación estricta de IPs
     for dev in discovered:
-        if verify_http(dev['ip']):
-            url = f"http://{dev['ip']}/cgi/sysipset.cgi"
-            payload = {"IP": BASE_IP, "MK": "255.255.255.0", "GW": "0.0.0.0", "MV": "1"}
+        temp_ip = dev['ip']
+        url = f"http://{temp_ip}/cgi/sysipset.cgi"
+        
+        # Si la IP temporal responde, reintentamos hasta 3 veces forzar su regreso
+        intento = 0
+        while verify_http(temp_ip, timeout=0.8) and intento < 3:
+            intento += 1
+            log(f" [!] {temp_ip} aún responde en IP temporal. Re-aplicando reversión (Intento {intento})...", Colors.YELLOW)
             try:
-                requests.post(url, auth=dev['auth'], data=payload, timeout=3)
+                requests.post(url, auth=dev['auth'], data=payload_reversion, timeout=2)
             except Exception:
                 pass
+            
+            if os.name == 'nt':
+                subprocess.run(["arp", "-d", temp_ip], capture_output=True)
+            time.sleep(2)
+        
+        if not verify_http(temp_ip, timeout=0.5):
+            log(f" [OK] {dev['mac']} ({temp_ip}) regresó exitosamente a {BASE_IP}.", Colors.GREEN)
         else:
-            if dev['status'] == "EXITO":
-                backup.save(dev['mac'], dev['status'])
-            log(f" [OK] {dev['ip']} regresó al origen.", Colors.GREEN)
+            log(f" [ALERTA] {dev['mac']} sigue respondiendo en {temp_ip}.", Colors.RED)
+
+        # Guardado de Backup independiente del estado de red
+        if dev.get('status') == "EXITO":
+            backup.save(dev['mac'], dev['status'])
 
     backup.export_session()
     
@@ -267,7 +312,6 @@ if __name__ == "__main__":
         main()
     except KeyboardInterrupt:
         print("\n\n🛑 PROCESO DETENIDO POR EL USUARIO.")
-        # Attempt to notify interruption
         try:
             d = DiscordNotifier()
             d.send_webhook([], 0, "Switch PoE 1Gb Masivo", is_interrupted=True)
