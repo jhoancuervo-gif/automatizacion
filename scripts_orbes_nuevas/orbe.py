@@ -77,13 +77,19 @@ _mac_backup = None
 def registrar_mac(mac):
     """Guarda en macs.txt (raíz) y en backups_macs centralizado"""
     sesion_actual.append(mac)
+    
+    # MacBackup ya está configurado con mac_file=Config.MAC_FILE, 
+    # por lo que esto guarda la MAC sin necesidad de abrir el archivo de nuevo.
     if _mac_backup:
         _mac_backup.save(mac)
-    with open(Config.MAC_FILE, "a", encoding="utf-8") as f:
-        f.write(f"{mac}\n")
+        
+    # CORRECCIÓN: Se elimina la doble escritura manual que generaba el duplicado
+    # with open(Config.MAC_FILE, "a", encoding="utf-8") as f:
+    #     f.write(f"{mac}\n")
 
 async def main():
     global _mac_backup
+    # Aquí se le está pasando Config.MAC_FILE, por lo que MacBackup ya gestiona ese archivo
     _mac_backup = MacBackup(Config.CURRENT_DIR, "ORBE_NUEVAS", mac_file=Config.MAC_FILE)
 
     discord.send_ingreso("Orbes Nuevas")
